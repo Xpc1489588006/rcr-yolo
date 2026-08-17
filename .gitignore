@@ -1,0 +1,18 @@
+# datasets are too large for git (COCO-indoor ~15GB); see README for preparation
+datasets/
+
+# training outputs / logs / visualizations
+runs/
+logs/
+vis_out/
+
+# caches & python artifacts
+*.cache
+__pycache__/
+*.pyc
+*.pt
+*.onnx
+*.engine
+
+# temp
+*.tmp

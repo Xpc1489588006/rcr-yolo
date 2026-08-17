@@ -1,0 +1,36 @@
+# ============================================================
+# RCR-YOLO environment for GPU training platforms
+# Local smoke-tested with: Python 3.14 / ultralytics 8.4.120 / torch 2.13
+#
+# Install order on a fresh GPU node:
+#   1) CUDA wheel of torch (pick the cu tag matching the node driver):
+#        pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#      (skip this line if torch is preinstalled in the conda env)
+#   2) pip install -r requirements.txt
+# ============================================================
+
+# --- core ---
+torch>=2.3
+torchvision>=0.18
+ultralytics>=8.4.120        # >=8.4 required: RCRTrainer patches model.loss()
+
+# --- ultralytics runtime deps (pinned explicitly for reproducible envs) ---
+numpy>=1.26
+opencv-python-headless>=4.8 # headless: no libGL needed on GPU nodes
+pillow>=10.0
+PyYAML>=6.0
+scipy>=1.11
+pandas>=2.0
+matplotlib>=3.7
+tqdm>=4.66
+psutil>=5.9
+py-cpuinfo>=9.0
+requests>=2.31
+
+# --- evaluation / visualization ---
+# eval_hard.py is pure-python (no pycocotools needed);
+# Grad-CAM & recon visualizations use opencv + numpy only.
+
+# --- optional data-pipeline extras ---
+# fiftyone>=0.24            # alternative COCO-indoor filtering
+# pycocotools>=2.0.7        # official COCO AP cross-check

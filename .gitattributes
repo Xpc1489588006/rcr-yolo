@@ -1,0 +1,2 @@
+# shell scripts must stay LF (they run on Linux SLURM nodes)
+*.sh text eol=lf
