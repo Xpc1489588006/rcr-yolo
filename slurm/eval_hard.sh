@@ -39,7 +39,8 @@ if [ ! -f "$DATA" ]; then
     echo "错误: 未找到数据配置文件 $DATA"
     exit 1
 fi
-sed -i 's|^path: .*|path: .|' "$DATA"
+DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
+sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 
 OUT=runs/rcr/eval_hard_results.txt
 for d in runs/rcr/*/weights/best.pt; do

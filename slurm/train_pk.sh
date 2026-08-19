@@ -51,7 +51,10 @@ if [ ! -f "$STAGE2_DATA" ]; then
     echo "错误: 未找到目标域配置 $STAGE2_DATA，请先运行 data/convert_robot_datasets.py！"
     exit 1
 fi
-sed -i 's|^path: .*|path: .|' "$DATA" "$STAGE2_DATA"
+DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
+sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
+STAGE2_DATA_DIR="$(cd "$(dirname "$STAGE2_DATA")" && pwd)"
+sed -i "s|^path: .*|path: $STAGE2_DATA_DIR|" "$STAGE2_DATA"
 echo "先验集: $DATA"
 echo "目标域: $STAGE2_DATA"
 

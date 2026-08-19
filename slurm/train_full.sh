@@ -42,8 +42,9 @@ if [ ! -f "$DATA" ]; then
     echo "错误: 未找到数据配置文件 $DATA，请先运行 data/make_coco_indoor.py！"
     exit 1
 fi
-# 修正从 Windows 同步过来的 yaml 绝对路径为相对路径（path 相对 yaml 所在目录）
-sed -i 's|^path: .*|path: .|' "$DATA"
+# 修正从 Windows 同步过来的 yaml：把 path 指向数据集根目录（绝对路径，避免 ultralytics 解析歧义）
+DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
+sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 echo "数据配置文件检查通过: $DATA"
 
 python train.py --model cfg/yolo11n-rcr.yaml --data "$DATA" --name rcr-full \

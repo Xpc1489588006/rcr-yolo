@@ -63,7 +63,8 @@ if [ ! -f "$DATA" ]; then
     echo "错误: 未找到数据配置文件 $DATA，请先运行 data/make_coco_indoor.py！"
     exit 1
 fi
-sed -i 's|^path: .*|path: .|' "$DATA"
+DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
+sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 
 # 已有 best.pt 则跳过（重提交时可断点跳过已完成变体）
 if [ -f "runs/rcr/$NAME/weights/best.pt" ]; then
