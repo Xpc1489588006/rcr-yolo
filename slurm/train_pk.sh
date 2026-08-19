@@ -67,7 +67,7 @@ fi
 python train_pk.py --model cfg/yolo11n-rcr.yaml \
     --stage1-data "$DATA" --stage2-data "$STAGE2_DATA" \
     --epochs1 "${EPOCHS1:-150}" --epochs2 "${EPOCHS2:-100}" \
-    --batch "${BATCH:-32}" --device "${DEVICE:-0}" \
+    --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
     --project runs/rcr-pk "${EXTRA[@]}"
 
 END_TIME=$(date +%s)

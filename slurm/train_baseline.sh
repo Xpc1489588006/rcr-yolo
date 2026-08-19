@@ -48,7 +48,7 @@ sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 echo "数据配置文件检查通过: $DATA"
 
 python train.py --model yolo11n.yaml --data "$DATA" --name baseline-yolo11n \
-    --epochs "${EPOCHS:-150}" --batch "${BATCH:-32}" --device "${DEVICE:-0}" \
+    --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
     --project runs/rcr
 
 END_TIME=$(date +%s)

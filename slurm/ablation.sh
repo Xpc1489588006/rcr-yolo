@@ -73,7 +73,7 @@ if [ -f "runs/rcr/$NAME/weights/best.pt" ]; then
 fi
 
 python train.py --model "$MODEL" --data "$DATA" --name "$NAME" \
-    --epochs "${EPOCHS:-150}" --batch "${BATCH:-32}" --device "${DEVICE:-0}" \
+    --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
     --project runs/rcr
 
 END_TIME=$(date +%s)
