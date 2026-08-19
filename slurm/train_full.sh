@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/full_%j.out
 #SBATCH --error=logs/full_%j.err
@@ -49,7 +49,7 @@ echo "数据配置文件检查通过: $DATA"
 
 python train.py --model cfg/yolo11n-rcr.yaml --data "$DATA" --name rcr-full \
     --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
-    --project runs/rcr
+    --project "$PROJECT_ROOT/runs/rcr"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))

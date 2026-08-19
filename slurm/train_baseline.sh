@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/baseline_%j.out
 #SBATCH --error=logs/baseline_%j.err
@@ -49,7 +49,7 @@ echo "数据配置文件检查通过: $DATA"
 
 python train.py --model yolo11n.yaml --data "$DATA" --name baseline-yolo11n \
     --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
-    --project runs/rcr
+    --project "$PROJECT_ROOT/runs/rcr"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))

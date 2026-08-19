@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=24:00:00
 #SBATCH --array=0-6%2
 #SBATCH --output=logs/ablation_%A_%a.out
@@ -74,7 +74,7 @@ fi
 
 python train.py --model "$MODEL" --data "$DATA" --name "$NAME" \
     --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
-    --project runs/rcr
+    --project "$PROJECT_ROOT/runs/rcr"
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
