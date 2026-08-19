@@ -34,8 +34,8 @@ echo "============================================"
 mkdir -p logs
 
 # 激活 conda 环境
-source $(conda info --base)/etc/profile.d/conda.sh 2>/dev/null && conda activate xpc 2>/dev/null || \
-  source /data/home/zhaozhanshan/ENTER/bin/activate xpc 2>/dev/null || true
+source $(conda info --base)/etc/profile.d/conda.sh 2>/dev/null && conda activate rcr 2>/dev/null || \
+  source /data/home/zhaozhanshan/ENTER/bin/activate rcr 2>/dev/null || true
 
 DATA="${DATA:-datasets/coco_indoor/coco_indoor.yaml}"
 if [ ! -f "$DATA" ]; then
