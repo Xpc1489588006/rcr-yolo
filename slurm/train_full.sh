@@ -26,6 +26,7 @@ echo "  RCR-YOLO - 完整模型训练"
 echo "============================================"
 echo "GPU 型号:    $(nvidia-smi --query-gpu=name --format=csv,noheader)"
 echo "作业 ID:     ${SLURM_JOB_ID}"
+echo "模型配置:    ${MODEL:-cfg/yolo11n-rcr.yaml}"
 echo "运行节点:    ${SLURM_NODELIST}"
 echo "开始时间:    $(date '+%Y-%m-%d %H:%M:%S')"
 echo "项目根目录:  ${PROJECT_ROOT}"
@@ -47,7 +48,7 @@ DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
 sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 echo "数据配置文件检查通过: $DATA"
 
-python train.py --model cfg/yolo11n-rcr.yaml --data "$DATA" --name rcr-full \
+python train.py --model "${MODEL:-cfg/yolo11n-rcr.yaml}" --data "$DATA" --name "${NAME:-rcr-full}" \
     --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
     --project "$PROJECT_ROOT/runs/rcr"
 
