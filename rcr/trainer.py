@@ -32,16 +32,12 @@ _RECON_WEIGHT = float(os.environ.get("RCR_RECON_WEIGHT", "1.0"))
 
 def recon_loss(orb, batch):
     """Build the indoor mask+edge target from GT boxes and score ``orb.recon``."""
-    img = batch["img"]
-    h, w = img.shape[-2:]
-    boxes_per_img = [
-        batch["bboxes"][batch["batch_idx"] == i] for i in range(img.shape[0])
-    ]
-    target = ORBIn.build_target(boxes_per_img, None, h, w, img.device)
-
     pred = orb.recon
-    if pred.shape[-2:] != target.shape[-2:]:
-        target = F.interpolate(target, size=pred.shape[-2:], mode="nearest")
+    h, w = pred.shape[-2:]  # build the target directly at recon resolution
+    boxes_per_img = [
+        batch["bboxes"][batch["batch_idx"] == i] for i in range(pred.shape[0])
+    ]
+    target = ORBIn.build_target(boxes_per_img, None, h, w, pred.device)
 
     pos_mask = (target[:, :1] < 0.5).sum().float() / (target[:, :1].sum() + 1.0)
     pos_edge = (target[:, 1:2] < 0.5).sum().float() / (target[:, 1:2].sum() + 1.0)

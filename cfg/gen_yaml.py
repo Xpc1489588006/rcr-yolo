@@ -33,7 +33,7 @@ def build(orb: bool, neck: str):
         [-1, 1, "C3k2", [64, False, 0.25]],     # 2
     ]
     if orb:
-        backbone.append([-1, 1, "ORBIn", [64, 2, 2]])  # 3  P2 recon (train-only)
+        backbone.append([-1, 1, "ORBIn", [64, 1, 2]])  # 3  P2 recon (train-only), 2x upsample
     backbone += [
         [-1, 1, "Conv", [64, 3, 2]],            # P3/8
         [-1, 1, "C3k2", [128, False, 0.25]],
