@@ -11,6 +11,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import torch
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rcr.ultralytics_patch import register_rcr_modules
@@ -45,6 +47,9 @@ def main():
     args = ap.parse_args()
 
     name = args.name or Path(args.model).stem
+    if not args.deterministic:
+        # fixed 640 input + explicit batch -> safe to autotune cuDNN algos (~15-20% faster)
+        torch.backends.cudnn.benchmark = True
     trainer = RCRTrainer(
         overrides=dict(
             model=args.model,

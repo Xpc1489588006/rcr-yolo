@@ -15,6 +15,8 @@ import argparse
 import sys
 from pathlib import Path
 
+import torch
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rcr.ultralytics_patch import register_rcr_modules
@@ -48,6 +50,8 @@ def run_stage(model, data, epochs, lr0, project, name, batch, imgsz, device):
 
 
 def main():
+    # fixed 640 input + explicit batch -> safe to autotune cuDNN algos (~15-20% faster)
+    torch.backends.cudnn.benchmark = True
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="cfg/yolo11n-rcr.yaml")
     ap.add_argument("--stage1-data", required=True, help="prior set, e.g. COCO-indoor")
