@@ -17,6 +17,8 @@ from rcr.ultralytics_patch import register_rcr_modules
 
 register_rcr_modules()
 
+from ultralytics import YOLO  # noqa: E402
+
 from rcr.trainer import RCRTrainer  # noqa: E402
 
 
@@ -58,7 +60,17 @@ def main():
         )
     )
     trainer.train()
-    metrics = trainer.val()
+    # DetectionTrainer has no .val(); validate best.pt standalone and report.
+    metrics = YOLO(str(trainer.best)).val(
+        data=args.data,
+        imgsz=args.imgsz,
+        batch=args.batch,
+        device=args.device,
+        workers=args.workers,
+        project=args.project,
+        name=f"{name}-final",
+        exist_ok=True,
+    )
     print(f"[{name}] mAP50={metrics.box.map50:.4f} mAP50-95={metrics.box.map:.4f}")
 
 

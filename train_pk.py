@@ -69,8 +69,10 @@ def main():
 
     trainer2, _ = run_stage(str(w1), args.stage2_data, args.epochs2, 0.001,
                             args.project, "stage2-target", args.batch, args.imgsz, args.device)
-    m = trainer2.val()
-    print(f"[PK] target mAP50={m.box.map50:.4f} mAP50-95={m.box.map:.4f}")
+    m = trainer2.metrics or {}
+    map50 = float(m.get("metrics/mAP50(B)", float("nan")))
+    map5095 = float(m.get("metrics/mAP50-95(B)", float("nan")))
+    print(f"[PK] target mAP50={map50:.4f} mAP50-95={map5095:.4f}")
 
 
 if __name__ == "__main__":
