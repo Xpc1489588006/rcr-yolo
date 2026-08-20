@@ -38,6 +38,7 @@ def run_stage(model, data, epochs, lr0, project, name, batch, imgsz, device):
             project=project,
             name=name,
             amp=True,
+            deterministic=False,  # fully-deterministic mode is ~5x slower for large-spatial convs
             exist_ok=True,
         )
     )

@@ -36,6 +36,12 @@ def main():
     ap.add_argument("--project", default="runs/rcr")
     ap.add_argument("--name", default=None)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument(
+        "--deterministic",
+        action="store_true",
+        help="force fully-deterministic ops (very slow for large-spatial convs; "
+        "seeds stay fixed without this, runs are reproducible in distribution)",
+    )
     args = ap.parse_args()
 
     name = args.name or Path(args.model).stem
@@ -56,6 +62,7 @@ def main():
             mosaic=1.0,
             close_mosaic=15,
             resume=args.resume,
+            deterministic=args.deterministic,
             exist_ok=True,
         )
     )
