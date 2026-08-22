@@ -1,8 +1,8 @@
 # datasets are too large for git (COCO-indoor ~15GB); see README for preparation
 datasets/
 
-# training outputs / logs / visualizations
-runs/
+# training outputs: runs/ is tracked (metrics/plots in git, weights via Git LFS)
+# SLURM stdout/stderr logs are huge and regenerable -> keep ignored
 logs/
 vis_out/
 
@@ -10,7 +10,6 @@ vis_out/
 *.cache
 __pycache__/
 *.pyc
-*.pt
 *.onnx
 *.engine
 

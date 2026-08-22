@@ -1,2 +1,11 @@
 # shell scripts must stay LF (they run on Linux SLURM nodes)
 *.sh text eol=lf
+
+# training artifacts under runs/: keep bytes identical across platforms
+*.csv text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.png binary
+
+# model weights are tracked with Git LFS (run `git lfs install` once)
+*.pt filter=lfs diff=lfs merge=lfs -text
