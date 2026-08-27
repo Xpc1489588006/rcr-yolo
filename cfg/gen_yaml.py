@@ -11,6 +11,7 @@ modules, so channel counts are written explicitly for the *n* scale
     yolo11n-lcrbase.yaml    -> + LCRBase only (fallback)
     yolo11n-rcr.yaml        -> ORBIn + MRFE + LCR   (full RCR-YOLO)
     yolo11n-rcrfb.yaml      -> ORBIn + MRFE + LCRBase (fallback full)
+    yolo11n-orbmrfe.yaml    -> ORBIn + MRFE (LCR-free candidate after ablation)
 
 Usage:  python cfg/gen_yaml.py
 """
@@ -90,6 +91,7 @@ def main():
         "yolo11n-lcrbase.yaml": dict(orb=False, neck="lcrbase"),
         "yolo11n-rcr.yaml": dict(orb=True, neck="rcr"),
         "yolo11n-rcrfb.yaml": dict(orb=True, neck="rcrfb"),
+        "yolo11n-orbmrfe.yaml": dict(orb=True, neck="mrfe"),
     }
     for name, kw in variants.items():
         spec = build(**kw)

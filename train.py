@@ -35,6 +35,7 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--patience", type=int, default=50)
     ap.add_argument("--lr0", type=float, default=0.01)
+    ap.add_argument("--seed", type=int, default=0, help="RNG seed (multi-seed runs)")
     ap.add_argument("--project", default="runs/rcr")
     ap.add_argument("--name", default=None)
     ap.add_argument("--resume", action="store_true")
@@ -68,6 +69,7 @@ def main():
             close_mosaic=15,
             resume=args.resume,
             deterministic=args.deterministic,
+            seed=args.seed,
             exist_ok=True,
         )
     )

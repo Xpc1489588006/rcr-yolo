@@ -12,8 +12,10 @@
 
 # ============================================================
 # RCR-YOLO 完整模型训练（ORB-In + LCR + MRFE-Neck，COCO-indoor）
-# 硬件要求：1× RTX 4090 24GB
-# 预计时长：150 epochs ≈ 10-12 小时
+# 环境变量覆盖：MODEL/NAME/EPOCHS/BATCH/SEED，例：
+#   MODEL=cfg/yolo11n-orbmrfe.yaml NAME=ab5-orbmrfe sbatch slurm/train_full.sh
+#   SEED=1 NAME=rcr-full-s1 sbatch slurm/train_full.sh   # 多种子重复
+# 预计时长（A40, batch128）：150 epochs ≈ 36 小时
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -50,6 +52,7 @@ echo "数据配置文件检查通过: $DATA"
 
 python train.py --model "${MODEL:-cfg/yolo11n-rcr.yaml}" --data "$DATA" --name "${NAME:-rcr-full}" \
     --epochs "${EPOCHS:-150}" --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
+    --seed "${SEED:-0}" \
     --project "$PROJECT_ROOT/runs/rcr"
 
 END_TIME=$(date +%s)
