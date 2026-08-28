@@ -23,16 +23,6 @@ GT boxes=25982
 AP50=0.4494 AP75=0.3476
 AP50_small=0.1042 AP50_medium=0.1049
 AP50 occ-free=0.2676(6942) occ-partial=0.1115(3769) occ-heavy=0.1952(15271)
-===== ab5-orbmrfe =====
-GT boxes=25982
-AP50=0.4447 AP75=0.3438
-AP50_small=0.1039 AP50_medium=0.0955
-AP50 occ-free=0.2711(6942) occ-partial=0.1059(3769) occ-heavy=0.1926(15271)
-===== baseline-s1 =====
-GT boxes=25982
-AP50=0.4397 AP75=0.3315
-AP50_small=0.0905 AP50_medium=0.0915
-AP50 occ-free=0.2689(6942) occ-partial=0.1111(3769) occ-heavy=0.1872(15271)
 ===== baseline-yolo11n =====
 GT boxes=25982
 AP50=0.4345 AP75=0.3311
