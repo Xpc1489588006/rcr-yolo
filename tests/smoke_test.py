@@ -2,7 +2,7 @@
 
 Covers:
   1. unit forward of ORBIn / LCR / LCRBase / MRFE / GSConv
-  2. build all 6 ablation yamls + train/eval forward
+  2. build all 9 ablation yamls + train/eval forward
   3. ORB-In zero-inference-overhead property (identity in eval, recon cached in train)
   4. RCRTrainer.criterion adds a reconstruction loss when ORB-In is present
   5. one-epoch training on a synthetic YOLO-format dataset
@@ -34,6 +34,7 @@ from rcr.trainer import RCRTrainer  # noqa: E402
 YAMLS = [
     "cfg/yolo11n-orb.yaml", "cfg/yolo11n-mrfe.yaml", "cfg/yolo11n-lcr.yaml",
     "cfg/yolo11n-lcrbase.yaml", "cfg/yolo11n-rcrfb.yaml", "cfg/yolo11n-rcr.yaml",
+    "cfg/yolo11n-orbmrfe.yaml", "cfg/yolo11n-mrfelcrb.yaml", "cfg/yolo11n-orblcrb.yaml",
 ]
 
 

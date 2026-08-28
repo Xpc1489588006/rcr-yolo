@@ -12,6 +12,8 @@ modules, so channel counts are written explicitly for the *n* scale
     yolo11n-rcr.yaml        -> ORBIn + MRFE + LCR   (full RCR-YOLO)
     yolo11n-rcrfb.yaml      -> ORBIn + MRFE + LCRBase (fallback full)
     yolo11n-orbmrfe.yaml    -> ORBIn + MRFE (LCR-free candidate after ablation)
+    yolo11n-mrfelcrb.yaml   -> MRFE + LCRBase (pairwise cell: harmonizer generality)
+    yolo11n-orblcrb.yaml    -> ORBIn + LCRBase (pairwise cell: completes 2x2x2 grid)
 
 Usage:  python cfg/gen_yaml.py
 """
@@ -24,9 +26,9 @@ HERE = Path(__file__).resolve().parent
 
 
 def build(orb: bool, neck: str):
-    """neck in {'none', 'mrfe', 'lcr', 'lcrbase', 'rcr', 'rcrfb'}."""
-    lcr_mod = {"lcr": "LCR", "lcrbase": "LCRBase", "rcr": "LCR", "rcrfb": "LCRBase"}.get(neck)
-    use_mrfe = neck in {"mrfe", "rcr", "rcrfb"}
+    """neck in {'none', 'mrfe', 'lcr', 'lcrbase', 'rcr', 'rcrfb', 'mrfelcrb'}."""
+    lcr_mod = {"lcr": "LCR", "lcrbase": "LCRBase", "rcr": "LCR", "rcrfb": "LCRBase", "mrfelcrb": "LCRBase"}.get(neck)
+    use_mrfe = neck in {"mrfe", "rcr", "rcrfb", "mrfelcrb"}
 
     backbone = [
         [-1, 1, "Conv", [16, 3, 2]],            # 0  P1/2
@@ -92,6 +94,8 @@ def main():
         "yolo11n-rcr.yaml": dict(orb=True, neck="rcr"),
         "yolo11n-rcrfb.yaml": dict(orb=True, neck="rcrfb"),
         "yolo11n-orbmrfe.yaml": dict(orb=True, neck="mrfe"),
+        "yolo11n-mrfelcrb.yaml": dict(orb=False, neck="mrfelcrb"),
+        "yolo11n-orblcrb.yaml": dict(orb=True, neck="lcrbase"),
     }
     for name, kw in variants.items():
         spec = build(**kw)
