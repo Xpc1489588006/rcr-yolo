@@ -120,6 +120,9 @@ def load_gt(data_yaml):
 
 
 def box_areas(boxes):
+    """Areas of (N,4) xyxy or (N,5) [cls,x1,y1,x2,y2] boxes."""
+    if boxes.ndim == 2 and boxes.shape[1] == 5:
+        return (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 4] - boxes[:, 2])
     return (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
 
 
@@ -204,22 +207,29 @@ def evaluate(gt, preds, iou_thrs, size=None, crowd=None):
     """
     flags = gt_keep_flags(gt, size=size, crowd=crowd)
     n_kept = int(sum(int(f.sum()) for f in flags.values()))
+    # per-class GT with the keep flag carried along each box (flags are
+    # computed over ALL classes per image; matching is per class, so the
+    # flag array must be sliced to the class's own boxes)
     cls_preds, cls_gt = {}, {}
     for stem, info in gt.items():
-        for row in info["boxes"]:
-            cls_gt.setdefault(int(row[0]), {}).setdefault(stem, []).append(row[1:5])
+        kf = flags[stem]
+        for i, row in enumerate(info["boxes"]):
+            cls_gt.setdefault(int(row[0]), {}).setdefault(stem, []).append((row[1:5], bool(kf[i])))
     for stem, conf, c, pb in preds:
         cls_preds.setdefault(int(c), []).append((stem, conf, pb))
     aps = []
     for c, per_img in cls_gt.items():
-        n_gt_c = int(sum(len(v) for v in per_img.values()))
+        # COCO rule: only kept (non-ignored) GTs count toward recall; a class
+        # with no kept GT in this bucket does not enter the class mean
+        n_gt_c = int(sum(int(np.asarray([k for _, k in v]).sum()) for v in per_img.values()))
+        if n_gt_c == 0:
+            continue
         dets = sorted(cls_preds.get(c, []), key=lambda t: -t[1])
         if not dets:
             aps.append(0.0)
             continue
-        class_flags = {s: flags[s] if s in flags else np.ones(len(v), bool)
-                       for s, v in per_img.items()}
-        box_arr = {s: np.asarray(v, dtype=np.float64) for s, v in per_img.items()}
+        class_flags = {s: np.asarray([k for _, k in v], dtype=bool) for s, v in per_img.items()}
+        box_arr = {s: np.asarray([b for b, _ in v], dtype=np.float64) for s, v in per_img.items()}
         ap_t = []
         for t in iou_thrs:
             tp, fp = match_one_threshold(dets, box_arr, class_flags, t)
