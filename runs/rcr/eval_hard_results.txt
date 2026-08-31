@@ -29,12 +29,27 @@ AP50=0.4447 AP75=0.3438
 AP50_small=0.1039 AP50_medium=0.0955
 AP50 occ-free=0.2711(6942) occ-partial=0.1059(3769) occ-heavy=0.1926(15271)
 ===== baseline-s1 =====
-Ultralytics 8.4.121 🚀 Python-3.12.13 torch-2.5.1+cu121 
+GT boxes=25982
+AP50=0.4396 AP75=0.3315
+AP50_small=0.0905 AP50_medium=0.0914 AP50_large=0.3644
+AP50 occ-free=0.2689(6942) occ-partial=0.1111(3769) occ-heavy=0.1871(15271)
 ===== baseline-yolo11n =====
-Ultralytics 8.4.121 🚀 Python-3.12.13 torch-2.5.1+cu121 
+GT boxes=25982
+AP50=0.4345 AP75=0.3311
+AP50_small=0.0868 AP50_medium=0.0887 AP50_large=0.3585
+AP50 occ-free=0.2619(6942) occ-partial=0.1091(3769) occ-heavy=0.1861(15271)
 ===== mrfelcrb =====
-Ultralytics 8.4.121 🚀 Python-3.12.13 torch-2.5.1+cu121 
+GT boxes=25982
+AP50=0.4499 AP75=0.3478
+AP50_small=0.1043 AP50_medium=0.0919 AP50_large=0.3710
+AP50 occ-free=0.2731(6942) occ-partial=0.1055(3769) occ-heavy=0.1934(15271)
 ===== orblcrb =====
-Ultralytics 8.4.121 🚀 Python-3.12.13 torch-2.5.1+cu121 
+GT boxes=25982
+AP50=0.4425 AP75=0.3377
+AP50_small=0.0916 AP50_medium=0.0989 AP50_large=0.3635
+AP50 occ-free=0.2655(6942) occ-partial=0.1127(3769) occ-heavy=0.1892(15271)
 ===== rcr-full =====
-Ultralytics 8.4.121 🚀 Python-3.12.13 torch-2.5.1+cu121 
+GT boxes=25982
+AP50=0.4430 AP75=0.3418
+AP50_small=0.1056 AP50_medium=0.0941 AP50_large=0.3590
+AP50 occ-free=0.2612(6942) occ-partial=0.1097(3769) occ-heavy=0.1937(15271)
