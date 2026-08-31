@@ -3,11 +3,14 @@
 Standard mAP comes from ``model.val``; this script adds the paper's
 hard-object protocol on any YOLO-format dataset:
 
-* AP by object size (COCO convention: small < 32^2 px, medium < 96^2 px)
+* AP by object size (COCO convention: small < 32^2 px, medium < 96^2 px,
+  large >= 96^2 px)
 * AP by occlusion bucket, where occlusion of a GT box = fraction of its area
   covered by other GT boxes (free < 0.1 / partial 0.1-0.5 / heavy > 0.5)
 
 Pure-python matching (no pycocotools), IoU sweep 0.5:0.95 + AP50 per bucket.
+With ``--out`` + ``--name``, a model already present in the results file is
+skipped, so batch re-runs resume instead of duplicating entries.
 
 Usage:
     python eval_hard.py --weights runs/rcr/yolo11n-rcr/weights/best.pt \
@@ -149,7 +152,17 @@ def main():
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--device", default="0")
     ap.add_argument("--conf", type=float, default=0.001)
+    ap.add_argument("--name", default=None, help="run name (resume/skip key)")
+    ap.add_argument("--out", default=None, help="results file to check/skip against")
     args = ap.parse_args()
+
+    if args.name and args.out and Path(args.out).exists():
+        marker = f"===== {args.name} ====="
+        txt = Path(args.out).read_text()
+        i = txt.find(marker)
+        if i >= 0 and "AP50=" in txt[i:i + 400]:
+            print(f"[{args.name}] already evaluated, skipping")
+            sys.exit(0)
 
     model = YOLO(args.weights)
     gt = load_gt(args.data)
@@ -173,12 +186,13 @@ def main():
     overall75, _ = evaluate(gt, preds, 0.75)
     aps, _ = evaluate(gt, preds, 0.5, {"size": "s"})
     apm, _ = evaluate(gt, preds, 0.5, {"size": "m"})
+    apl, _ = evaluate(gt, preds, 0.5, {"size": "l"})
     ocf, nf = evaluate(gt, preds, 0.5, {"occ": "free"})
     ocp, np_ = evaluate(gt, preds, 0.5, {"occ": "partial"})
     och, nh = evaluate(gt, preds, 0.5, {"occ": "heavy"})
     print(f"GT boxes={sum(len(v) for v in gt.values())}")
     print(f"AP50={overall50:.4f} AP75={overall75:.4f}")
-    print(f"AP50_small={aps:.4f} AP50_medium={apm:.4f}")
+    print(f"AP50_small={aps:.4f} AP50_medium={apm:.4f} AP50_large={apl:.4f}")
     print(f"AP50 occ-free={ocf:.4f}({nf}) occ-partial={ocp:.4f}({np_}) occ-heavy={och:.4f}({nh})")
 
 
