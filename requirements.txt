@@ -28,9 +28,9 @@ py-cpuinfo>=9.0
 requests>=2.31
 
 # --- evaluation / visualization ---
-# eval_hard.py is pure-python (no pycocotools needed);
-# Grad-CAM & recon visualizations use opencv + numpy only.
+# eval_hard.py protocol v2: custom matcher (COCO ignore semantics) +
+# standard COCOeval cross-check; Grad-CAM & recon vis use opencv + numpy.
+pycocotools>=2.0.7
 
 # --- optional data-pipeline extras ---
 # fiftyone>=0.24            # alternative COCO-indoor filtering
-# pycocotools>=2.0.7        # official COCO AP cross-check

@@ -1,19 +1,25 @@
-"""Hard-object evaluation: AP_S / AP_M / occlusion-bucketed AP.
+"""Hard-object evaluation protocol v2 (fixed 2026-08-31, per 总结分析.md §3.1/3.2).
 
-Standard mAP comes from ``model.val``; this script adds the paper's
-hard-object protocol on any YOLO-format dataset:
+Fixes relative to v1:
+* Real IoU sweep 0.50:0.05:0.95 for overall AP (v1 computed only AP50/AP75
+  despite claiming a full sweep).
+* Area-range buckets (small/medium/large) now follow COCO ignore semantics:
+  a prediction whose best overlap is with a GT *outside* the bucket is
+  ignored -- it is neither TP nor FP (v1 counted such predictions as FP,
+  biasing the bucket APs downward).
+* The former "occlusion" buckets are renamed crowded-overlap buckets: they
+  measure 2D box-overlap density (a proxy for scene crowding), NOT physical
+  occlusion. Coverage is now computed with a rasterized geometric union,
+  eliminating v1's double counting when several boxes cover the same region.
+* Optional pycocotools COCOeval cross-check prints standard
+  AP / AP50 / AP75 / AP_S / AP_M / AP_L when pycocotools is installed.
 
-* AP by object size (COCO convention: small < 32^2 px, medium < 96^2 px,
-  large >= 96^2 px)
-* AP by occlusion bucket, where occlusion of a GT box = fraction of its area
-  covered by other GT boxes (free < 0.1 / partial 0.1-0.5 / heavy > 0.5)
-
-Pure-python matching (no pycocotools), IoU sweep 0.5:0.95 + AP50 per bucket.
-With ``--out`` + ``--name``, a model already present in the results file is
-skipped, so batch re-runs resume instead of duplicating entries.
+Resume protocol (shared with slurm/eval_hard.sh): with ``--out`` + ``--name``,
+a model whose block already contains the v2 token ``AP50-95=`` is skipped;
+v1 blocks (no such token) are purged by the shell script and re-evaluated.
 
 Usage:
-    python eval_hard.py --weights runs/rcr/yolo11n-rcr/weights/best.pt \
+    python eval_hard.py --weights runs/rcr/mrfelcrb/weights/best.pt \
                         --data datasets/coco_indoor/coco_indoor.yaml
 """
 
@@ -21,7 +27,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -32,12 +37,63 @@ register_rcr_modules()
 
 from ultralytics import YOLO  # noqa: E402
 
+SIZE_BOUNDS = {"s": (0.0, 32**2), "m": (32**2, 96**2), "l": (96**2, np.inf)}
+CROWD_BOUNDS = {"free": (0.0, 0.1), "partial": (0.1, 0.5), "heavy": (0.5, 1.01)}
 
-def load_gt(data_yaml: str):
+
+def iou_vec(box, boxes):
+    """IoU of one xyxy box against an (N,4) array, vectorized."""
+    if len(boxes) == 0:
+        return np.zeros(0)
+    x1, y1 = np.maximum(box[0], boxes[:, 0]), np.maximum(box[1], boxes[:, 1])
+    x2, y2 = np.minimum(box[2], boxes[:, 2]), np.minimum(box[3], boxes[:, 3])
+    inter = np.clip(x2 - x1, 0, None) * np.clip(y2 - y1, 0, None)
+    aa = (box[2] - box[0]) * (box[3] - box[1])
+    bb = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    return inter / (aa + bb - inter + 1e-9)
+
+
+def crowded_overlap(boxes, grid=64):
+    """Fraction of each GT box's area covered by the UNION of other GT boxes.
+
+    Rasterizes the clipped intersections onto a grid per box, so a region
+    covered by several boxes is only counted once (v1 summed raw intersection
+    areas and double-counted). Resolution is ample for the 0.1/0.5 bucket
+    thresholds. This is a 2D box-overlap density proxy, not true occlusion.
+
+    Accepts (N,4) xyxy or (N,5) [cls,x1,y1,x2,y2] arrays.
+    """
+    boxes = boxes[:, 1:5] if boxes.ndim == 2 and boxes.shape[1] == 5 else boxes
+    n = len(boxes)
+    occ = np.zeros(n)
+    for i in range(n):
+        x1, y1, x2, y2 = boxes[i]
+        bw, bh = x2 - x1, y2 - y1
+        if bw <= 0 or bh <= 0:
+            continue
+        mask = np.zeros((grid, grid), dtype=bool)
+        for j in range(n):
+            if j == i:
+                continue
+            gx1 = max(0, min(grid, int(np.floor((boxes[j][0] - x1) / bw * grid))))
+            gx2 = max(0, min(grid, int(np.ceil((boxes[j][2] - x1) / bw * grid))))
+            gy1 = max(0, min(grid, int(np.floor((boxes[j][1] - y1) / bh * grid))))
+            gy2 = max(0, min(grid, int(np.ceil((boxes[j][3] - y1) / bh * grid))))
+            if gx2 > gx1 and gy2 > gy1:
+                mask[gy1:gy2, gx1:gx2] = True
+        occ[i] = mask.sum() / (grid * grid)
+    return occ
+
+
+def load_gt(data_yaml):
+    """GT as {stem: {"hw": (h, w), "boxes": (N,5) [cls, x1, y1, x2, y2]}}."""
+    import cv2
     import yaml
 
     d = yaml.safe_load(Path(data_yaml).read_text())
     root = Path(d["path"])
+    if not root.exists():  # yaml 'path' may be stale relative to this cwd
+        root = Path(data_yaml).resolve().parent / d["path"]
     split = d.get("val", "val/images")
     img_dir = root / split
     lbl_dir = root / split.replace("images", "labels")
@@ -59,90 +115,165 @@ def load_gt(data_yaml: str):
                 c, cx, cy, bw, bh = map(float, p[:5])
                 boxes.append([int(c), (cx - bw / 2) * w, (cy - bh / 2) * h,
                               (cx + bw / 2) * w, (cy + bh / 2) * h])
-        gt[img.stem] = np.array(boxes, dtype=np.float64).reshape(-1, 5)
+        gt[img.stem] = {"hw": (h, w), "boxes": np.array(boxes, dtype=np.float64).reshape(-1, 5)}
     return gt
 
 
-def iou(a, b):
-    x1, y1 = np.maximum(a[0], b[0]), np.maximum(a[1], b[1])
-    x2, y2 = np.minimum(a[2], b[2]), np.minimum(a[3], b[3])
-    inter = np.clip(x2 - x1, 0, None) * np.clip(y2 - y1, 0, None)
-    aa = (a[2] - a[0]) * (a[3] - a[1])
-    bb = (b[2] - b[0]) * (b[3] - b[1])
-    return inter / (aa + bb - inter + 1e-9)
+def box_areas(boxes):
+    return (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
 
 
-def occlusion_ratios(boxes):
-    """Fraction of each GT box's area covered by any other GT box."""
-    n = len(boxes)
-    occ = np.zeros(n)
-    for i in range(n):
-        area_i = (boxes[i][2] - boxes[i][0]) * (boxes[i][3] - boxes[i][1])
-        inters = []
-        for j in range(n):
-            if j != i:
-                x1, y1 = max(boxes[i][0], boxes[j][0]), max(boxes[i][1], boxes[j][1])
-                x2, y2 = min(boxes[i][2], boxes[j][2]), min(boxes[i][3], boxes[j][3])
-                inters.append(max(0.0, x2 - x1) * max(0.0, y2 - y1))
-        occ[i] = min(1.0, sum(inters) / max(area_i, 1e-9))
-    return occ
+def gt_keep_flags(gt, size=None, crowd=None):
+    """Per-stem boolean keep mask; ~keep GTs become *ignore* in matching."""
+    flags = {}
+    for stem, info in gt.items():
+        boxes = info["boxes"]
+        if len(boxes) == 0:
+            flags[stem] = np.zeros(0, dtype=bool)
+            continue
+        keep = np.ones(len(boxes), dtype=bool)
+        if size is not None:
+            lo, hi = SIZE_BOUNDS[size]
+            areas = box_areas(boxes)
+            keep &= (areas >= lo) & (areas < hi)
+        if crowd is not None:
+            lo, hi = CROWD_BOUNDS[crowd]
+            ov = crowded_overlap(boxes)
+            keep &= (ov >= lo) & (ov < hi)
+        flags[stem] = keep
+    return flags
 
 
-def ap_all_point(tp, fp, n_gt):
+def ap_from_flags(tp_flags, fp_flags, n_gt):
+    """101-point-interpolated AP from per-detection TP/FP flag arrays."""
     if n_gt == 0:
         return float("nan")
-    tp, fp = np.cumsum(tp), np.cumsum(fp)
+    if len(tp_flags) == 0:
+        return 0.0  # every detection ignored, or none made
+    tp, fp = np.cumsum(tp_flags), np.cumsum(fp_flags)
     rec, prec = tp / n_gt, tp / (tp + fp)
     mrec, mpre = np.r_[0.0, rec, 1.0], np.r_[0.0, prec, 0.0]
     np.maximum.accumulate(mpre[::-1], out=mpre[::-1])
-    return float(np.sum((mrec[1:] - mrec[:-1]) * mpre[1:]))
+    thr = np.linspace(0.0, 1.0, 101)
+    p_at_r = np.array([mpre[mrec >= r].max() if np.any(mrec >= r) else 0.0 for r in thr])
+    return float(p_at_r.mean())
 
 
-def evaluate(gt, preds, iou_t=0.5, filt=None):
-    """filt: dict with optional keys 'size' in {s,m,l} and 'occ' bucket name."""
-    per_cls = {}
-    for stem, boxes in gt.items():
-        if len(boxes) == 0:
+def match_one_threshold(cls_preds, cls_gt, flags, iou_t):
+    """COCO-style greedy matching at one IoU threshold.
+
+    cls_preds: [(stem, conf, xyxy)] sorted by conf desc.
+    cls_gt:    {stem: (K,4) boxes of this class}; flags: {stem: keep mask}.
+    Predictions whose best overlap is an *ignored* (out-of-bucket) GT are
+    dropped from TP/FP entirely; only kept GTs can be matched.
+    """
+    tp, fp = [], []
+    matched = {}
+    for stem, _, pb in cls_preds:
+        gb = cls_gt.get(stem)
+        if gb is None or len(gb) == 0:
+            fp.append(1)
+            tp.append(0)
             continue
-        areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-        occ = occlusion_ratios(boxes)
-        keep = np.ones(len(boxes), bool)
-        if filt and filt.get("size"):
-            keep &= {"s": areas < 32**2, "m": (areas >= 32**2) & (areas < 96**2),
-                     "l": areas >= 96**2}[filt["size"]]
-        if filt and filt.get("occ"):
-            keep &= {"free": occ < 0.1, "partial": (occ >= 0.1) & (occ <= 0.5),
-                     "heavy": occ > 0.5}[filt["occ"]]
-        for k in np.where(keep)[0]:
-            per_cls.setdefault(int(boxes[k][0]), []).append((stem, boxes[k][1:5]))
+        ious = iou_vec(np.asarray(pb, dtype=np.float64), gb)
+        kf = flags[stem]
+        keep_order = np.where(kf)[0][np.argsort(-ious[kf])] if kf.any() else np.zeros(0, int)
+        used = matched.setdefault(stem, set())
+        hit = -1
+        for k in keep_order:
+            if ious[k] >= iou_t and k not in used:
+                hit = k
+                break
+        if hit >= 0:
+            used.add(hit)
+            tp.append(1)
+            fp.append(0)
+            continue
+        if (~kf).any() and ious[~kf].max() >= iou_t:
+            continue  # prediction absorbed by an ignored (out-of-bucket) GT
+        fp.append(1)
+        tp.append(0)
+    return np.array(tp), np.array(fp)
+
+
+def evaluate(gt, preds, iou_thrs, size=None, crowd=None):
+    """Mean per-class AP over ``iou_thrs`` restricted to a GT subset.
+
+    Returns (AP, n_kept_gt). With size/crowd=None this is the overall AP
+    (no GT is ignored).
+    """
+    flags = gt_keep_flags(gt, size=size, crowd=crowd)
+    n_kept = int(sum(int(f.sum()) for f in flags.values()))
+    cls_preds, cls_gt = {}, {}
+    for stem, info in gt.items():
+        for row in info["boxes"]:
+            cls_gt.setdefault(int(row[0]), {}).setdefault(stem, []).append(row[1:5])
+    for stem, conf, c, pb in preds:
+        cls_preds.setdefault(int(c), []).append((stem, conf, pb))
     aps = []
-    for c, g in per_cls.items():
-        n_gt = len(g)
-        pr = [p for p in preds if p[2] == c]
-        pr.sort(key=lambda t: -t[1])
-        used = {s: [False] * len([x for x in g if x[0] == s]) for s in {x[0] for x in g}}
-        gt_by_stem = {}
-        for s, b in g:
-            gt_by_stem.setdefault(s, []).append(b)
-        used = {s: [False] * len(v) for s, v in gt_by_stem.items()}
-        tp, fp = [], []
-        for stem, conf, _, pb in pr:
-            cands = gt_by_stem.get(stem, [])
-            best, bi = 0.0, -1
-            for k, gb in enumerate(cands):
-                v = iou(pb, gb)
-                if v > best:
-                    best, bi = v, k
-            if best >= iou_t and bi >= 0 and not used[stem][bi]:
-                used[stem][bi] = True
-                tp.append(1)
-                fp.append(0)
-            else:
-                tp.append(0)
-                fp.append(1)
-        aps.append(ap_all_point(np.array(tp), np.array(fp), n_gt))
+    for c, per_img in cls_gt.items():
+        n_gt_c = int(sum(len(v) for v in per_img.values()))
+        dets = sorted(cls_preds.get(c, []), key=lambda t: -t[1])
+        if not dets:
+            aps.append(0.0)
+            continue
+        class_flags = {s: flags[s] if s in flags else np.ones(len(v), bool)
+                       for s, v in per_img.items()}
+        box_arr = {s: np.asarray(v, dtype=np.float64) for s, v in per_img.items()}
+        ap_t = []
+        for t in iou_thrs:
+            tp, fp = match_one_threshold(dets, box_arr, class_flags, t)
+            ap_t.append(ap_from_flags(tp, fp, n_gt_c))
+        aps.append(float(np.mean(ap_t)))
     aps = [a for a in aps if a == a]
-    return float(np.mean(aps)) if aps else 0.0, sum(len(v) for v in per_cls.values())
+    return float(np.mean(aps)) if aps else 0.0, n_kept
+
+
+def coco_crosscheck(gt, preds):
+    """Standard pycocotools COCOeval numbers; returns stats array or None."""
+    try:
+        from pycocotools.coco import COCO
+        from pycocotools.cocoeval import COCOeval
+    except ImportError:
+        print("COCOeval: pycocotools not installed; "
+              "run `pip install pycocotools` for standard AP_S/AP_M/AP_L")
+        return None
+    images, annotations, cat_ids, ann_id = [], [], set(), 1
+    for idx, (stem, info) in enumerate(sorted(gt.items()), start=1):
+        h, w = info["hw"]
+        images.append({"id": idx, "width": int(w), "height": int(h)})
+        for row in info["boxes"]:
+            c, x1, y1, x2, y2 = row
+            cat_ids.add(int(c) + 1)
+            annotations.append({"id": ann_id, "image_id": idx,
+                                "category_id": int(c) + 1,
+                                "bbox": [float(x1), float(y1),
+                                         float(x2 - x1), float(y2 - y1)],
+                                "area": float((x2 - x1) * (y2 - y1)), "iscrowd": 0})
+            ann_id += 1
+    coco_gt = COCO()
+    coco_gt.dataset = {"images": images, "annotations": annotations,
+                       "categories": [{"id": int(c)} for c in sorted(cat_ids)]}
+    coco_gt.createIndex()
+    stem2id = {s: i for i, (s, _) in enumerate(sorted(gt.items()), start=1)}
+    results = []
+    for stem, conf, c, box in preds:
+        x1, y1, x2, y2 = [float(v) for v in box]
+        results.append({"image_id": stem2id[stem], "category_id": int(c) + 1,
+                        "bbox": [x1, y1, x2 - x1, y2 - y1], "score": float(conf)})
+    if not results:
+        print("COCOeval: no predictions above --conf, skipped")
+        return None
+    try:
+        ev = COCOeval(coco_gt, coco_gt.loadRes(results), "bbox")
+        ev.params.imgIds = sorted(stem2id.values())
+        ev.evaluate()
+        ev.accumulate()
+        ev.summarize()
+        return ev.stats
+    except Exception as e:  # defensive: never kill the hard-object protocol
+        print(f"COCOeval: failed ({e}); custom protocol numbers above stand")
+        return None
 
 
 def main():
@@ -154,14 +285,16 @@ def main():
     ap.add_argument("--conf", type=float, default=0.001)
     ap.add_argument("--name", default=None, help="run name (resume/skip key)")
     ap.add_argument("--out", default=None, help="results file to check/skip against")
+    ap.add_argument("--no-coco", action="store_true",
+                    help="skip the pycocotools COCOeval cross-check")
     args = ap.parse_args()
 
     if args.name and args.out and Path(args.out).exists():
         marker = f"===== {args.name} ====="
         txt = Path(args.out).read_text()
         i = txt.find(marker)
-        if i >= 0 and "AP50=" in txt[i:i + 400]:
-            print(f"[{args.name}] already evaluated, skipping")
+        if i >= 0 and "AP50-95=" in txt[i:i + 600]:  # v2 protocol token
+            print(f"[{args.name}] already evaluated (protocol v2), skipping")
             sys.exit(0)
 
     model = YOLO(args.weights)
@@ -170,7 +303,10 @@ def main():
     preds = []  # (stem, conf, cls, xyxy)
     import yaml
     d = yaml.safe_load(Path(args.data).read_text())
-    img_dir = Path(d["path"]) / d.get("val", "val/images")
+    root = Path(d["path"])
+    if not root.exists():
+        root = Path(args.data).resolve().parent / d["path"]
+    img_dir = root / d.get("val", "val/images")
     for stem in gt:
         for ext in (".jpg", ".jpeg", ".png", ".bmp"):
             p = img_dir / (stem + ext)
@@ -182,18 +318,26 @@ def main():
         for box, conf, cls in zip(r.boxes.xyxy.cpu().numpy(), r.boxes.conf.cpu().numpy(), r.boxes.cls.cpu().numpy()):
             preds.append((stem, float(conf), int(cls), box))
 
-    overall50, n = evaluate(gt, preds, 0.5)
-    overall75, _ = evaluate(gt, preds, 0.75)
-    aps, _ = evaluate(gt, preds, 0.5, {"size": "s"})
-    apm, _ = evaluate(gt, preds, 0.5, {"size": "m"})
-    apl, _ = evaluate(gt, preds, 0.5, {"size": "l"})
-    ocf, nf = evaluate(gt, preds, 0.5, {"occ": "free"})
-    ocp, np_ = evaluate(gt, preds, 0.5, {"occ": "partial"})
-    och, nh = evaluate(gt, preds, 0.5, {"occ": "heavy"})
-    print(f"GT boxes={sum(len(v) for v in gt.values())}")
-    print(f"AP50={overall50:.4f} AP75={overall75:.4f}")
-    print(f"AP50_small={aps:.4f} AP50_medium={apm:.4f} AP50_large={apl:.4f}")
-    print(f"AP50 occ-free={ocf:.4f}({nf}) occ-partial={ocp:.4f}({np_}) occ-heavy={och:.4f}({nh})")
+    sweep = np.round(np.arange(0.5, 0.951, 0.05), 2)
+    overall, n_all = evaluate(gt, preds, sweep)
+    ap50, _ = evaluate(gt, preds, [0.5])
+    ap75, _ = evaluate(gt, preds, [0.75])
+    aps, n_s = evaluate(gt, preds, [0.5], size="s")
+    apm, n_m = evaluate(gt, preds, [0.5], size="m")
+    apl, n_l = evaluate(gt, preds, [0.5], size="l")
+    cf, n_f = evaluate(gt, preds, [0.5], crowd="free")
+    cp, n_p = evaluate(gt, preds, [0.5], crowd="partial")
+    ch, n_h = evaluate(gt, preds, [0.5], crowd="heavy")
+
+    print(f"GT boxes={n_all} images={len(gt)} detections={len(preds)} protocol=v2")
+    print(f"AP50={ap50:.4f} AP75={ap75:.4f} AP50-95={overall:.4f}")
+    print(f"AP50-small={aps:.4f}({n_s}) AP50-medium={apm:.4f}({n_m}) AP50-large={apl:.4f}({n_l})")
+    print(f"crowd-free={cf:.4f}({n_f}) crowd-partial={cp:.4f}({n_p}) crowd-heavy={ch:.4f}({n_h})")
+    if not args.no_coco:
+        stats = coco_crosscheck(gt, preds)
+        if stats is not None:
+            print(f"COCOeval AP={stats[0]:.4f} AP50={stats[1]:.4f} AP75={stats[2]:.4f} "
+                  f"AP_S={stats[3]:.4f} AP_M={stats[4]:.4f} AP_L={stats[5]:.4f}")
 
 
 if __name__ == "__main__":
