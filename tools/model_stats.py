@@ -125,10 +125,32 @@ def fix_data_path(data_yaml):
         print(f"  fixed yaml path -> {fixed}")
 
 
-def device_name(device):
+def normalize_device(device):
+    """'0'/'1' -> cuda:N when CUDA is available, else fall back to CPU.
+
+    torch.device('0') is an invalid device string; bare indices must be
+    interpreted. On login nodes (no GPU) this degrades gracefully so
+    params/GFLOPs can still be computed there.
+    """
+    d = str(device).strip()
+    if d.isdigit():
+        d = f"cuda:{d}"
     try:
-        if torch.device(device).type == "cuda":
-            return torch.cuda.get_device_name(device)
+        dev = torch.device(d)
+    except Exception:
+        dev = torch.device("cpu")
+    if dev.type == "cuda" and not torch.cuda.is_available():
+        print("  warning: CUDA unavailable on this node (login node?); "
+              "falling back to CPU. Latency will be SKIPPED -- re-run on a "
+              "GPU node (e.g. sbatch slurm/model_stats.sh) for paper numbers.")
+        dev = torch.device("cpu")
+    return dev
+
+
+def device_name(dev):
+    try:
+        if dev.type == "cuda":
+            return torch.cuda.get_device_name(dev)
     except Exception:
         pass
     return "cpu"
@@ -151,8 +173,10 @@ def main():
     files = sorted(glob.glob(args.weights))
     if not files:
         raise SystemExit(f"no weights match {args.weights}")
-    dev = device_name(args.device)
-    print(f"device={dev} imgsz={args.imgsz} fp32 batch=1")
+    dev = normalize_device(args.device)
+    dev_str = str(dev)
+    has_gpu = dev.type == "cuda"
+    print(f"device={device_name(dev)} ({dev_str}) imgsz={args.imgsz} fp32 batch=1")
     header = ["name", "params_ckpt_M", "params_trainable_M", "params_deploy_M",
               "params_orb_M", "gflops", "latency_ms"]
     rows = []
@@ -162,8 +186,10 @@ def main():
             model = YOLO(f)
             tot, trn, dep, orb = count_params(model)
             gf = count_flops(model, args.imgsz)
-            lat = measure_latency(model, args.imgsz, args.device, n=args.n) \
-                if not args.no_latency else float("nan")
+            if has_gpu and not args.no_latency:
+                lat = measure_latency(model, args.imgsz, dev_str, n=args.n)
+            else:
+                lat = float("nan")  # CPU latency is meaningless for the paper
             rows.append([name, round(tot / 1e6, 3), round(trn / 1e6, 3),
                          round(dep / 1e6, 3), round(orb / 1e6, 3), gf, round(lat, 2)])
             print(f"{name:20s} ckpt={tot/1e6:.3f}M train={trn/1e6:.3f}M "
