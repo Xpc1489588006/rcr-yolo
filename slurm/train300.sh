@@ -23,8 +23,10 @@
 #   batch=64（24G 4090 约束；全部任务同 batch，协议内部可比）
 #
 # 断点保护：
-#   best.pt 已存在      -> 跳过（已完成）
-#   仅有 last.pt        -> resume 续训（应对时限中断/掉卡）
+#   .done 哨兵存在   -> 跳过（已完成）
+#   仅有 last.pt     -> resume 续训（应对时限中断/掉卡/假 best.pt）
+# 注意：ultralytics 第 1 轮验证后即写 best.pt，故 best.pt 不能作完成判据
+# （18573 曾因此假跳过被杀作业的 1 轮权重）。
 # 提交：
 #   sbatch -w control06 slurm/train300.sh
 #   训练完成后接评测（<JOBID> 为本作业数组 ID）：
@@ -93,9 +95,9 @@ grep -q "^path: $DATA_DIR$" "$DATA" || sed -i "s|^path: .*|path: $DATA_DIR|" "$D
 PROJECT="$PROJECT_ROOT/runs/rcr300"
 mkdir -p "$PROJECT/$NAME"
 
-# 断点保护：已完成跳过；被中断（有 last 无 best）则续训
-if [ -f "$PROJECT/$NAME/weights/best.pt" ]; then
-    echo "[$NAME] 已存在 best.pt，跳过"
+# 断点保护：.done 哨兵才算完成；被中断（有 last 无 .done）则续训
+if [ -f "$PROJECT/$NAME/.done" ]; then
+    echo "[$NAME] 已完成（.done 哨兵存在），跳过"
     exit 0
 fi
 
@@ -104,9 +106,11 @@ COMMON="--data $DATA --name $NAME --project $PROJECT \
 
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
     echo "[$NAME] 检测到 last.pt，断点续训"
-    python train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume
+    python train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume \
+        && touch "$PROJECT/$NAME/.done"
 else
-    python train.py $COMMON --model "$MODEL"
+    python train.py $COMMON --model "$MODEL" \
+        && touch "$PROJECT/$NAME/.done"
 fi
 
 END_TIME=$(date +%s)
