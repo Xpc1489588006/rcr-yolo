@@ -47,24 +47,29 @@ def _is_orb(module):
 
 
 def count_params(model):
-    """(checkpoint params, trainable params, deploy params, orb params).
+    """(checkpoint params, deploy params, orb params).
 
-    Deploy = own params of every module outside ORB branches; an ORB module
-    and everything inside it is excluded entirely.
+    Every tensor in a loaded best.pt belongs to the training graph, so
+    checkpoint params == trainable params. Deploy excludes the ENTIRE ORB
+    subtree: ORBIn holds no direct parameters -- its weights live in the
+    head/body/end convs, so attribution must walk the tree carrying an
+    "inside-ORB" flag instead of checking each module's own name.
     """
     m = model.model
     total = sum(p.numel() for p in m.parameters())
-    trainable = sum(p.numel() for p in m.parameters() if p.requires_grad)
-    deploy = orb = 0
-    for mod in m.modules():
+    orb = 0
+
+    def walk(mod, in_orb):
+        nonlocal orb
+        is_orb = in_orb or _is_orb(mod)
         own = sum(p.numel() for p in mod.parameters(recurse=False))
-        if own == 0:
-            continue
-        if _is_orb(mod) or any(_is_orb(a) for a in mod.modules()):
+        if own and is_orb:
             orb += own
-        else:
-            deploy += own
-    return total, trainable, deploy, orb
+        for child in mod.children():
+            walk(child, is_orb)
+
+    walk(m, False)
+    return total, total - orb, orb
 
 
 def count_flops(model, imgsz):
@@ -177,24 +182,23 @@ def main():
     dev_str = str(dev)
     has_gpu = dev.type == "cuda"
     print(f"device={device_name(dev)} ({dev_str}) imgsz={args.imgsz} fp32 batch=1")
-    header = ["name", "params_ckpt_M", "params_trainable_M", "params_deploy_M",
-              "params_orb_M", "gflops", "latency_ms"]
+    header = ["name", "params_ckpt_M", "params_deploy_M", "params_orb_M",
+              "gflops", "latency_ms"]
     rows = []
     for f in files:
         name = Path(f).resolve().parents[1].name
         try:
             model = YOLO(f)
-            tot, trn, dep, orb = count_params(model)
+            tot, dep, orb = count_params(model)
             gf = count_flops(model, args.imgsz)
             if has_gpu and not args.no_latency:
                 lat = measure_latency(model, args.imgsz, dev_str, n=args.n)
             else:
                 lat = float("nan")  # CPU latency is meaningless for the paper
-            rows.append([name, round(tot / 1e6, 3), round(trn / 1e6, 3),
-                         round(dep / 1e6, 3), round(orb / 1e6, 3), gf, round(lat, 2)])
-            print(f"{name:20s} ckpt={tot/1e6:.3f}M train={trn/1e6:.3f}M "
-                  f"deploy={dep/1e6:.3f}M orb={orb/1e6:.3f}M "
-                  f"GFLOPs={gf} latency={lat:.2f}ms")
+            rows.append([name, round(tot / 1e6, 3), round(dep / 1e6, 3),
+                         round(orb / 1e6, 3), gf, round(lat, 2)])
+            print(f"{name:20s} ckpt={tot/1e6:.3f}M deploy={dep/1e6:.3f}M "
+                  f"orb={orb/1e6:.3f}M GFLOPs={gf} latency={lat:.2f}ms")
         except Exception as e:
             print(f"{name:20s} FAILED: {e}")
     if args.csv:
@@ -207,7 +211,7 @@ def main():
     print("\n| model | ckpt params (M) | deploy params (M) | GFLOPs | latency (ms) |")
     print("|---|---:|---:|---:|---:|")
     for r in rows:
-        print(f"| {r[0]} | {r[1]} | {r[3]} | {r[5]} | {r[6]} |")
+        print(f"| {r[0]} | {r[1]} | {r[2]} | {r[4]} | {r[5]} |")
 
 
 if __name__ == "__main__":
