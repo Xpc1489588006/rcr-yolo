@@ -14,16 +14,19 @@ set -o pipefail  # 让管道内 python 崩溃能被 if ! 捕获
 
 # ============================================================
 # 困难目标批量评测（eval_hard 协议 v2，2026-08-31 修正）：
-# 对 runs/rcr/ 下所有已完成 run 计算
+# 对 $RUNS_DIR（默认 runs/rcr）下所有已完成 run 计算
 # AP50 / AP75 / AP50-95（完整 IoU 扫描）/
 # AP50-small/medium/large（COCO ignore 语义）/
 # crowded-overlap 分桶 AP（free/partial/heavy，几何 union）
 # 若已安装 pycocotools，另输出标准 COCOeval 指标供交叉核对。
-# 结果追加写入 runs/rcr/eval_hard_results.txt
+# 结果追加写入 $RUNS_DIR/eval_hard_results.txt
 # 自动断点续跑：已评测（块内出现 AP50-95=）的模型跳过、
 # 崩溃残留及 v1 旧协议块（无 AP50-95= 标记）自动清理并重评，
 # 任一模型评测失败立即中止（重提交即可继续）。
 # 提交：sbatch slurm/eval_hard.sh（训练作业全部完成后）
+# 300 轮协议目录：
+#   sbatch -w control06 --dependency=afterok:<训练数组ID>_% \
+#       --export=ALL,RUNS_DIR=runs/rcr300 slurm/eval_hard.sh
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -51,7 +54,8 @@ fi
 DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
 sed -i "s|^path: .*|path: $DATA_DIR|" "$DATA"
 
-OUT=runs/rcr/eval_hard_results.txt
+OUT=${RUNS_DIR:-runs/rcr}/eval_hard_results.txt
+mkdir -p "$(dirname "$OUT")"
 
 # 清理不完整块及 v1 旧协议块（v2 完整块第 3 行必含 AP50-95=）
 if [ -f "$OUT" ]; then
@@ -62,7 +66,7 @@ if [ -f "$OUT" ]; then
     ' "$OUT" > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
-for d in runs/rcr/*/weights/best.pt; do
+for d in ${RUNS_DIR:-runs/rcr}/*/weights/best.pt; do
     [ -f "$d" ] || { echo "没有可评测的权重，先提交训练作业"; exit 0; }
     NAME=$(basename "$(dirname "$(dirname "$d")")")
     if grep -A 2 "===== $NAME =====" "$OUT" 2>/dev/null | grep -q "AP50-95="; then
