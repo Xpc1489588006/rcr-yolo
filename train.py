@@ -68,7 +68,11 @@ def main():
             amp=True,
             mosaic=1.0,
             close_mosaic=15,
-            resume=args.resume,
+            # 2026-09-03 事故根因：resume 传布尔值时，ultralytics check_resume
+            # 会改用 get_latest_run() 全局扫描最近修改的 last.pt，导致并发作业
+            # 全部从同一个检查点续训、交叉写入同一目录。改传路径字符串，
+            # 强制从指定检查点恢复。
+            resume=args.model if args.resume else False,
             deterministic=args.deterministic,
             seed=args.seed,
             exist_ok=True,
