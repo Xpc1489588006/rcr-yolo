@@ -7,7 +7,6 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --time=96:00:00
-#SBATCH --array=0-29%4
 #SBATCH --output=logs/t300_%A_%a.out
 #SBATCH --error=logs/t300_%A_%a.err
 
@@ -27,8 +26,11 @@
 #   仅有 last.pt     -> resume 续训（应对时限中断/掉卡/假 best.pt）
 # 注意：ultralytics 第 1 轮验证后即写 best.pt，故 best.pt 不能作完成判据
 # （18573 曾因此假跳过被杀作业的 1 轮权重）。
-# 提交：
-#   sbatch -w control06 slurm/train300.sh
+# 提交（推荐：单任务显式指定；本集群数组任务 ID 曾错乱串模型，见下）：
+#   sbatch -w control06 --export=ALL,VARIANT_OVERRIDE=ab3-lcr,\
+#       MODEL_OVERRIDE=cfg/yolo11n-lcr.yaml,SEED_OVERRIDE=0 slurm/train300.sh
+# 全套 30 任务（仅集群数组机制验证可靠时使用）：
+#   sbatch -w control06 --array=0-29%4 slurm/train300.sh
 #   训练完成后接评测（<JOBID> 为本作业数组 ID）：
 #   sbatch -w control06 --dependency=afterok:<JOBID>_% \
 #       --export=ALL,RUNS_DIR=runs/rcr300 slurm/eval_hard.sh
@@ -43,6 +45,12 @@
 #    7 mrfelcrb         : cfg/yolo11n-mrfelcrb.yaml MRFE+LCRBase（最终模型）
 #    8 ab4-rcr-fb       : cfg/yolo11n-rcrfb.yaml   三模块
 #    9 rcr-full         : cfg/yolo11n-rcr.yaml     ORB+MRFE+LCR
+#
+# 单任务提交（推荐）：通过环境变量显式指定，绕开数组任务号推导：
+#   sbatch -w control06 --job-name=t300_ab3-lcr-s0 \
+#       --output=logs/t300_ab3-lcr-s0.%j.out --error=logs/t300_ab3-lcr-s0.%j.err \
+#       --export=ALL,VARIANT_OVERRIDE=ab3-lcr,MODEL_OVERRIDE=cfg/yolo11n-lcr.yaml,SEED_OVERRIDE=0 \
+#       slurm/train300.sh
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -60,9 +68,18 @@ VARIANTS=(
     "ab4-rcr-fb:cfg/yolo11n-rcrfb.yaml"
     "rcr-full:cfg/yolo11n-rcr.yaml"
 )
-SEED=$(( SLURM_ARRAY_TASK_ID % 3 ))
-VIDX=$(( SLURM_ARRAY_TASK_ID / 3 ))
-IFS=: read -r VARIANT MODEL <<< "${VARIANTS[$VIDX]}"
+# 变体解析：优先环境变量显式指定（推荐）；否则按数组任务号推导。
+# 2026-09-03 事故：本集群数组任务 ID 传递错乱（索引 9 的任务实际训练了
+# 索引 21 的模型，且 scancel 后仍有分叉子任务继续写权重），数组方式慎用。
+if [ -n "$VARIANT_OVERRIDE" ]; then
+    VARIANT="$VARIANT_OVERRIDE"
+    MODEL="$MODEL_OVERRIDE"
+    SEED=${SEED_OVERRIDE:-0}
+else
+    SEED=$(( SLURM_ARRAY_TASK_ID % 3 ))
+    VIDX=$(( SLURM_ARRAY_TASK_ID / 3 ))
+    IFS=: read -r VARIANT MODEL <<< "${VARIANTS[$VIDX]}"
+fi
 NAME="${VARIANT}-s${SEED}"
 
 START_TIME=$(date +%s)
@@ -71,7 +88,7 @@ echo "============================================"
 echo "  RCR-YOLO - 300轮协议 [$NAME]"
 echo "============================================"
 echo "GPU 型号:    $(nvidia-smi --query-gpu=name --format=csv,noheader)"
-echo "作业 ID:     ${SLURM_JOB_ID} (array ${SLURM_ARRAY_TASK_ID}/${SLURM_ARRAY_TASK_COUNT})"
+echo "作业 ID:     ${SLURM_JOB_ID} (array ${SLURM_ARRAY_TASK_ID:-N/A}/${SLURM_ARRAY_TASK_COUNT:-1})"
 echo "运行节点:    ${SLURM_NODELIST}"
 echo "模型配置:    ${MODEL}  seed=${SEED}"
 echo "开始时间:    $(date '+%Y-%m-%d %H:%M:%S')"
@@ -118,7 +135,7 @@ fi
 COMMON="--data $DATA --name $NAME --project $PROJECT \
     --epochs ${EPOCHS:-300} --batch ${BATCH:-64} --device ${DEVICE:-0} --seed $SEED"
 
-TMPLOG=$(mktemp logs/.train_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.XXXX)
+TMPLOG=$(mktemp logs/.train_${NAME}.${SLURM_JOB_ID}.XXXX)
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
     echo "[$NAME] 检测到 last.pt，断点续训"
     python -u train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume > "$TMPLOG" 2>&1
