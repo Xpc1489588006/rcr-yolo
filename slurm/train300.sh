@@ -26,9 +26,10 @@
 #   仅有 last.pt     -> resume 续训（应对时限中断/掉卡/假 best.pt）
 # 注意：ultralytics 第 1 轮验证后即写 best.pt，故 best.pt 不能作完成判据
 # （18573 曾因此假跳过被杀作业的 1 轮权重）。
-# 提交（推荐：单任务显式指定；本集群数组任务 ID 曾错乱串模型，见下）：
-#   sbatch -w control06 --export=ALL,VARIANT_OVERRIDE=ab3-lcr,\
-#       MODEL_OVERRIDE=cfg/yolo11n-lcr.yaml,SEED_OVERRIDE=0 slurm/train300.sh
+# 提交（推荐：单任务 + 位置参数，完全绕开环境变量；本集群数组任务 ID 与 --export 均不可信）：
+#   sbatch -w control06 --job-name=t300_ab3-lcr-s0 \
+#       --output=logs/t300_ab3-lcr-s0.%j.out --error=logs/t300_ab3-lcr-s0.%j.err \
+#       slurm/train300.sh ab3-lcr cfg/yolo11n-lcr.yaml 0
 # 全套 30 任务（仅集群数组机制验证可靠时使用）：
 #   sbatch -w control06 --array=0-29%4 slurm/train300.sh
 #   训练完成后接评测（<JOBID> 为本作业数组 ID）：
@@ -46,11 +47,10 @@
 #    8 ab4-rcr-fb       : cfg/yolo11n-rcrfb.yaml   三模块
 #    9 rcr-full         : cfg/yolo11n-rcr.yaml     ORB+MRFE+LCR
 #
-# 单任务提交（推荐）：通过环境变量显式指定，绕开数组任务号推导：
+# 单任务提交（推荐）：位置参数 <变体名> <模型yaml> <种子>，不依赖数组任务号与环境变量：
 #   sbatch -w control06 --job-name=t300_ab3-lcr-s0 \
 #       --output=logs/t300_ab3-lcr-s0.%j.out --error=logs/t300_ab3-lcr-s0.%j.err \
-#       --export=ALL,VARIANT_OVERRIDE=ab3-lcr,MODEL_OVERRIDE=cfg/yolo11n-lcr.yaml,SEED_OVERRIDE=0 \
-#       slurm/train300.sh
+#       slurm/train300.sh ab3-lcr cfg/yolo11n-lcr.yaml 0
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -68,10 +68,15 @@ VARIANTS=(
     "ab4-rcr-fb:cfg/yolo11n-rcrfb.yaml"
     "rcr-full:cfg/yolo11n-rcr.yaml"
 )
-# 变体解析：优先环境变量显式指定（推荐）；否则按数组任务号推导。
-# 2026-09-03 事故：本集群数组任务 ID 传递错乱（索引 9 的任务实际训练了
-# 索引 21 的模型，且 scancel 后仍有分叉子任务继续写权重），数组方式慎用。
-if [ -n "$VARIANT_OVERRIDE" ]; then
+# 变体解析：优先位置参数（推荐）；其次环境变量；最后按数组任务号推导。
+# 2026-09-03 事故：本集群数组任务 ID 传递错乱（索引 9 的任务实际训练了索引 21
+# 的模型）；改用 --export 环境变量传变体后仍发生 4 个作业全部串写同一目录。
+# 位置参数不经任何环境传递，是当前唯一可信方式。
+if [ -n "$1" ]; then
+    VARIANT="$1"
+    MODEL="$2"
+    SEED="${3:-0}"
+elif [ -n "$VARIANT_OVERRIDE" ]; then
     VARIANT="$VARIANT_OVERRIDE"
     MODEL="$MODEL_OVERRIDE"
     SEED=${SEED_OVERRIDE:-0}
