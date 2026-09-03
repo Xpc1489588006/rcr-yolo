@@ -46,6 +46,7 @@ def main():
         "seeds stay fixed without this, runs are reproducible in distribution)",
     )
     args = ap.parse_args()
+    print("argv:", " ".join(sys.argv), flush=True)
 
     name = args.name or Path(args.model).stem
     if not args.deterministic:
@@ -73,6 +74,17 @@ def main():
             exist_ok=True,
         )
     )
+    # 身份护栏（2026-09-03 事故：4 个作业交叉写入同一目录）。
+    # resume 合并 checkpoint 的 train_args 后，若生效的 name/save_dir
+    # 与本次运行身份不符，立即中止，防止权重被写到错误的目录。
+    save_dir = str(getattr(trainer, "save_dir", "")).replace("\\", "/")
+    if trainer.args.name != name or not save_dir.endswith(f"/{name}"):
+        print(
+            f"[{name}] IDENTITY MISMATCH after trainer init: "
+            f"args.name={trainer.args.name} save_dir={save_dir}; aborting",
+            flush=True,
+        )
+        sys.exit(3)
     trainer.train()
     # DetectionTrainer has no .val(); validate best.pt standalone and report.
     metrics = YOLO(str(trainer.best)).val(

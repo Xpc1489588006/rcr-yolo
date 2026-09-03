@@ -137,9 +137,18 @@ COMMON="--data $DATA --name $NAME --project $PROJECT \
 
 TMPLOG=$(mktemp logs/.train_${NAME}.${SLURM_JOB_ID}.XXXX)
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
-    echo "[$NAME] 检测到 last.pt，断点续训"
+    # 身份核验：last.pt 内部记录的 name 必须与本任务目录一致，防止交叉写入（2026-09-03 事故）
+    CKPT_NAME=$(python -c "import torch; print(((torch.load('$PROJECT/$NAME/weights/last.pt', map_location='cpu', weights_only=False).get('train_args')) or {}).get('name',''))" 2>/dev/null)
+    if [ "$CKPT_NAME" != "$NAME" ]; then
+        echo "[$NAME] 中止：last.pt 内部身份为 '$CKPT_NAME'，与目录不符"
+        rm -f "$TMPLOG"
+        exit 1
+    fi
+    echo "[$NAME] 检测到 last.pt（身份核验通过：$CKPT_NAME），断点续训"
+    echo "CMD: python -u train.py $COMMON --model $PROJECT/$NAME/weights/last.pt --resume"
     python -u train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume > "$TMPLOG" 2>&1
 else
+    echo "CMD: python -u train.py $COMMON --model $MODEL"
     python -u train.py $COMMON --model "$MODEL" > "$TMPLOG" 2>&1
 fi
 RC=$?
