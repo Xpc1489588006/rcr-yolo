@@ -79,6 +79,20 @@ echo "============================================"
 
 mkdir -p logs
 
+# 日志瘦身: 训练输出先落盘临时文件（保住 python 真实退出码，不影响 .done 哨兵语义），
+# 结束后按 \r 只保留每段最后一行（即每个 epoch 的 100% 汇总行）再写入 .out。
+# 避免每轮 1476 行进度条刷进日志（历史 300 轮日志曾达 68MB/文件，清洗后约 1.6MB）。
+logstrip() {
+    python -u -c '
+import sys
+with open(sys.argv[1], "rb") as f:
+    for raw in f:
+        text = raw.decode("utf-8", "replace")
+        for seg in text.split("\n"):
+            sys.stdout.write(seg.split("\r")[-1] + "\n")
+' "$1"
+}
+
 # 激活 conda 环境
 source $(conda info --base)/etc/profile.d/conda.sh 2>/dev/null && conda activate rcr 2>/dev/null || \
   source /data/home/zhaozhanshan/ENTER/bin/activate rcr 2>/dev/null || true
@@ -104,13 +118,18 @@ fi
 COMMON="--data $DATA --name $NAME --project $PROJECT \
     --epochs ${EPOCHS:-300} --batch ${BATCH:-64} --device ${DEVICE:-0} --seed $SEED"
 
+TMPLOG=$(mktemp logs/.train_${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}.XXXX)
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
     echo "[$NAME] 检测到 last.pt，断点续训"
-    python train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume \
-        && touch "$PROJECT/$NAME/.done"
+    python -u train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume > "$TMPLOG" 2>&1
 else
-    python train.py $COMMON --model "$MODEL" \
-        && touch "$PROJECT/$NAME/.done"
+    python -u train.py $COMMON --model "$MODEL" > "$TMPLOG" 2>&1
+fi
+RC=$?
+logstrip "$TMPLOG"   # 清洗后的精简日志进 .out（SLURM stdout）
+rm -f "$TMPLOG"
+if [ $RC -eq 0 ]; then
+    touch "$PROJECT/$NAME/.done"
 fi
 
 END_TIME=$(date +%s)
@@ -119,3 +138,4 @@ echo "--------------------------------------------"
 echo "[$NAME] 结束时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "[$NAME] 运行时长: $((DURATION/3600))小时 $(((DURATION%3600)/60))分钟 $((DURATION%60))秒"
 echo "============================================"
+exit $RC

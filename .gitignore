@@ -1,7 +1,9 @@
 # datasets are too large for git (COCO-indoor ~15GB); see README for preparation
 datasets/
 
-# training outputs: runs/ is tracked (metrics/plots in git, weights via Git LFS)
+# training outputs: regenerable and large (plots/metrics/weights) -> keep ignored
+# (历史结果已存档于 git 历史; 指标汇总改由 tools/model_stats.py 导出)
+runs/
 # SLURM stdout/stderr logs are huge and regenerable -> keep ignored
 logs/
 vis_out/
@@ -15,3 +17,4 @@ __pycache__/
 
 # temp
 *.tmp
+*.md
