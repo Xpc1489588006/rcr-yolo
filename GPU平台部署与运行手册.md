@@ -75,6 +75,12 @@ git -c http.proxy= -c https.proxy= push origin main   # 临时禁用代理（不
 # 或代理可用时直接 git push origin main
 ```
 
+### 3.5 服务器端推送：一律走 SSH（重要，2026-08 起）
+集群出口代理对 HTTPS 大推送会在收尾阶段掐断（`HTTP 408` + `unexpected disconnect`），
+所有 HTTP 调优均无效。服务器 remote 已切换为 SSH 443（`git@github.com:Xpc1489588006/rcr-yolo.git`），
+免 PAT 且稳定。**新机器配置、完整踩坑记录与排障速查表见 [服务器Git推送指南-SSH443方案.md](服务器Git推送指南-SSH443方案.md)**。
+注意 §3.1 中的 HTTPS 地址仅适用于首次克隆；克隆后建议立即 `git remote set-url` 切到 SSH。
+
 ---
 
 ## 4. 数据集
