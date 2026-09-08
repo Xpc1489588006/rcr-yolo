@@ -149,7 +149,19 @@ if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
         rm -f "$TMPLOG"
         exit 1
     fi
-    echo "[$NAME] 检测到 last.pt（身份核验通过：$CKPT_NAME），断点续训"
+    # 可续训性核验：被 strip 过的 last.pt（epoch=-1/缺失，final_save 后的产物）无法真正 resume，
+    # ultralytics 会静默降级为"以 last.pt 为预训练权重的全新训练"：重置 warmup/optimizer/LR 调度，
+    # 摧毁已收敛权重后在 ep1 的验证值上永不超越，patience=50 于 ep51 假早停并以 RC=0 骗过 .done
+    # （2026-09-05 事故：ab3-lcr/ab3b/ab4/ab5/mrfelcrb 五个模型全部中招）。
+    CKPT_EPOCH=$(python -c "import torch; print(torch.load('$PROJECT/$NAME/weights/last.pt', map_location='cpu', weights_only=False).get('epoch', -1))" 2>/dev/null)
+    case "$CKPT_EPOCH" in (''|*[!0-9-]*) CKPT_EPOCH=-1 ;; esac
+    if [ "$CKPT_EPOCH" -lt 1 ]; then
+        echo "[$NAME] 中止：last.pt 已被 strip（epoch=$CKPT_EPOCH），resume 会静默降级为全新训练。"
+        echo "[$NAME] 处置：rm -rf $PROJECT/$NAME $PROJECT/$NAME-final 后重提本任务（走 yaml 全新训练分支）。"
+        rm -f "$TMPLOG"
+        exit 1
+    fi
+    echo "[$NAME] 检测到 last.pt（身份=$CKPT_NAME, epoch=$CKPT_EPOCH），断点续训"
     echo "CMD: python -u train.py $COMMON --model $PROJECT/$NAME/weights/last.pt --resume"
     python -u train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume > "$TMPLOG" 2>&1
 else
@@ -160,7 +172,17 @@ RC=$?
 logstrip "$TMPLOG"   # 清洗后的精简日志进 .out（SLURM stdout）
 rm -f "$TMPLOG"
 if [ $RC -eq 0 ]; then
-    touch "$PROJECT/$NAME/.done"
+    # 完成度核验：results.csv 末行 epoch 须达总轮数 60%（本数据集合法收敛早停均在 250 轮后；
+    # ep51 假早停等病态终止在此拦截，不写 .done 并以 RC=2 显式失败，防止污染评测链）。
+    LAST_EP=$(tail -n 1 "$PROJECT/$NAME/results.csv" 2>/dev/null | cut -d, -f1)
+    case "$LAST_EP" in (''|*[!0-9]*) LAST_EP=0 ;; esac
+    MIN_EP=$(( ${EPOCHS:-300} * 3 / 5 ))
+    if [ "$LAST_EP" -lt "$MIN_EP" ]; then
+        echo "[$NAME] 异常：results.csv 仅到 epoch=$LAST_EP（阈值 $MIN_EP），疑似假早停/resume 降级，不写 .done，需人工检查！"
+        RC=2
+    else
+        touch "$PROJECT/$NAME/.done"
+    fi
 fi
 
 END_TIME=$(date +%s)
