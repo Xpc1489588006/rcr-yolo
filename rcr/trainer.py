@@ -80,4 +80,8 @@ class RCRTrainer(DetectionTrainer):
 
     def setup_model(self):
         patch_detection_model_loss()
-        super().setup_model()
+        # 必须 return：ultralytics 8.4 的 _setup_train 靠 setup_model() 的返回值
+        # 拿 checkpoint（ckpt = self.setup_model()），丢掉返回值会让
+        # resume_training(None) 静默跳过 → resume 降级为全新训练（warmup 摧毁
+        # 已收敛权重，2026-09-05 / 09-13 两次事故的真凶）。
+        return super().setup_model()
