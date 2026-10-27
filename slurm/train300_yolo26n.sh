@@ -15,8 +15,7 @@
 #   300 epochs, patience 50, close_mosaic 15, batch 64, imgsz 640,
 #   lr0 0.01/lrf 0.01, nondeterministic cuDNN, seeds 0/1/2.
 #
-# The repository includes the official yolo26n.pt checkpoint. For the first
-# single-seed probe on a 4090, submit with 24 shards:
+# For the first single-seed probe on a 4090, submit with 24 shards:
 #   sbatch --array=0 -p p3 -w control06 \
 #     --gres=shard:24 --cpus-per-task=8 --mem=64G --time=96:00:00 \
 #     --export=ALL,DATA=/data/home/zhaozhanshan/rcr/rcr_yolo/datasets/coco_indoor/coco_indoor.yaml \
@@ -28,7 +27,7 @@ PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 cd "$PROJECT_ROOT" || exit 1
 
 SEED="${SLURM_ARRAY_TASK_ID:-0}"
-MODEL="${MODEL:-yolo26n.pt}"
+MODEL="${MODEL:-yolo26n.yaml}"
 NAME="yolo26n-s${SEED}"
 PROJECT="${PROJECT_ROOT}/runs/rcr300"
 DATA="${DATA:-datasets/coco_indoor/coco_indoor.yaml}"
@@ -51,10 +50,6 @@ source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null && conda activa
 
 if [ ! -f "$DATA" ]; then
     echo "ERROR: data yaml not found: $DATA"
-    exit 1
-fi
-if [ ! -f "$MODEL" ]; then
-    echo "ERROR: model checkpoint not found: $MODEL"
     exit 1
 fi
 DATA_DIR="$(cd "$(dirname "$DATA")" && pwd)"
