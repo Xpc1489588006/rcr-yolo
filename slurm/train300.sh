@@ -102,7 +102,8 @@ if [ -f "$PROJECT/$NAME/.done" ]; then
 fi
 
 COMMON="--data $DATA --name $NAME --project $PROJECT \
-    --epochs ${EPOCHS:-300} --batch ${BATCH:-64} --device ${DEVICE:-0} --seed $SEED"
+    --epochs ${EPOCHS:-300} --batch ${BATCH:-64} --workers ${WORKERS:-8} \
+    --device ${DEVICE:-0} --seed $SEED"
 
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
     echo "[$NAME] 检测到 last.pt，断点续训"

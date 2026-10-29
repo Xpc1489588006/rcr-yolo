@@ -69,7 +69,7 @@ fi
 
 COMMON="--data $DATA --name $NAME --project $PROJECT \
     --epochs 300 --batch 64 --imgsz 640 --patience 50 --lr0 0.01 \
-    --workers 8 --device ${DEVICE:-0} --seed $SEED"
+    --workers ${WORKERS:-8} --device ${DEVICE:-0} --seed $SEED"
 
 if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
     echo "[$NAME] resuming from last.pt"
