@@ -43,7 +43,7 @@ echo "Data:       ${DATA}"
 echo "Start:      $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================"
 
-mkdir -p logs "$PROJECT/$NAME"
+mkdir -p logs "$PROJECT"
 
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null && conda activate rcr 2>/dev/null || \
   source /data/home/zhaozhanshan/ENTER/bin/activate rcr 2>/dev/null || true
@@ -63,11 +63,18 @@ fi
 
 COMMON="--data $DATA --name $NAME --project $PROJECT \
     --epochs 300 --batch 64 --imgsz 640 --patience 50 --lr0 0.01 \
-    --workers 8 --device ${DEVICE:-0} --seed $SEED"
+    --workers ${WORKERS:-4} --device ${DEVICE:-0} --seed $SEED"
 
-if [ -f "$PROJECT/$NAME/weights/last.pt" ]; then
-    echo "[$NAME] resuming from last.pt"
+if [ "${RESUME:-0}" = "1" ]; then
+    if [ ! -f "$PROJECT/$NAME/weights/last.pt" ]; then
+        echo "[$NAME] RESUME=1 but last.pt is missing"
+        exit 2
+    fi
+    echo "[$NAME] resuming from $PROJECT/$NAME/weights/last.pt"
     python -u train.py $COMMON --model "$PROJECT/$NAME/weights/last.pt" --resume
+elif [ -e "$PROJECT/$NAME" ]; then
+    echo "[$NAME] run directory already exists; set RESUME=1 only after verifying its checkpoint"
+    exit 2
 else
     python -u train.py $COMMON --model "$MODEL"
 fi
