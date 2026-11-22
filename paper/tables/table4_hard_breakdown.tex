@@ -1,0 +1,48 @@
+% TABLE IV: 困难场景性能分解（ab4 vs baseline, s0）
+
+\begin{table}[t]
+\centering
+\caption{困难场景性能分解：ab4-rcr-fb vs baseline-yolo11n（单种子s0）}
+\label{tab:hard_breakdown}
+\begin{tabular}{l|ccc|c}
+\hline
+\multirow{2}{*}{\textbf{场景维度}} & \multicolumn{3}{c|}{\textbf{AP50（单种子s0）}} & \multirow{2}{*}{\textbf{绝对提升}} \\
+& baseline & ab4-rcr-fb & 相对提升(\%) & \\
+\hline
+\hline
+\multicolumn{5}{l}{\textit{按目标尺寸分桶（Hard v2协议）}} \\
+\hline
+Small ($< 32^2$ px) & 0.0666 & 0.0868 & +30.3\% & +0.0202 \\
+Medium ($32^2$-$96^2$ px) & 0.0837 & 0.0866 & +3.5\% & +0.0029 \\
+Large ($\geq 96^2$ px) & 0.4756 & 0.4912 & +3.3\% & +0.0156 \\
+\hline
+\hline
+\multicolumn{5}{l}{\textit{按拥挤程度分桶（Hard v2协议，基于IoU重叠）}} \\
+\hline
+Crowd-free（无/轻微重叠） & 0.5441 & 0.5538 & +1.8\% & +0.0097 \\
+Partial（部分重叠） & 0.4945 & 0.5041 & +1.9\% & +0.0096 \\
+Heavy（严重重叠） & 0.3036 & 0.3143 & +3.5\% & +0.0107 \\
+\hline
+\hline
+\multicolumn{5}{l}{\textit{综合困难目标指标}} \\
+\hline
+Hard AP50 & 0.4597 & 0.4704 & +2.3\% & +0.0107 \\
+Hard AP75 & 0.3489 & 0.3633 & +4.1\% & +0.0144 \\
+\textbf{Hard AP50-95} & \textbf{0.3219} & \textbf{0.3343} & \textbf{+3.9\%} & \textbf{+0.0124} \\
+\hline
+\end{tabular}
+\begin{tablenotes}
+\small
+\item \textbf{Hard v2协议}：困难目标评估协议，将验证集实例按尺寸和拥挤程度分桶。
+\item \textbf{尺寸桶}：基于边界框面积划分，Small子集7,846个实例，Medium子集9,431个，Large子集8,705个。
+\item \textbf{拥挤桶}：基于边界框IoU重叠几何代理，Crowd-free子集8,449个实例，Partial子集6,207个，Heavy子集11,326个。
+\item \textbf{关键发现}：
+  \begin{itemize}
+    \item ab4在小目标上改进最显著（+30.3\%），验证ORB-In底层监督和MRFE多感受野的有效性
+    \item 中等和大目标也有一致改进（+3.5\%, +3.3\%），表明方法的通用性
+    \item 拥挤场景改进随重叠程度递增（crowd-free +1.8\% $\rightarrow$ heavy +3.5\%），验证LCRBase场景上下文的作用
+    \item Hard AP75提升最大（+4.1\%），表明定位精度显著改善
+  \end{itemize}
+\item 所有指标在COCO-indoor验证集上评估，统一训练协议（300轮，单种子s0=42）。
+\end{tablenotes}
+\end{table}

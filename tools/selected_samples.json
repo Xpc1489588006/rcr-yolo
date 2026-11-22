@@ -1,0 +1,416 @@
+[
+  {
+    "image_id": "000000009891",
+    "gt_total": 8,
+    "gt_small": 0,
+    "det_baseline": 4,
+    "det_ab4": 7,
+    "improvement": 3,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009891.jpg"
+  },
+  {
+    "image_id": "000000002431",
+    "gt_total": 9,
+    "gt_small": 1,
+    "det_baseline": 9,
+    "det_ab4": 11,
+    "improvement": 2,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000002431.jpg"
+  },
+  {
+    "image_id": "000000005193",
+    "gt_total": 7,
+    "gt_small": 0,
+    "det_baseline": 8,
+    "det_ab4": 10,
+    "improvement": 2,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000005193.jpg"
+  },
+  {
+    "image_id": "000000007281",
+    "gt_total": 10,
+    "gt_small": 7,
+    "det_baseline": 7,
+    "det_ab4": 9,
+    "improvement": 2,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007281.jpg"
+  },
+  {
+    "image_id": "000000001000",
+    "gt_total": 16,
+    "gt_small": 0,
+    "det_baseline": 14,
+    "det_ab4": 15,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001000.jpg"
+  },
+  {
+    "image_id": "000000002685",
+    "gt_total": 19,
+    "gt_small": 5,
+    "det_baseline": 6,
+    "det_ab4": 7,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000002685.jpg"
+  },
+  {
+    "image_id": "000000003255",
+    "gt_total": 9,
+    "gt_small": 7,
+    "det_baseline": 5,
+    "det_ab4": 6,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000003255.jpg"
+  },
+  {
+    "image_id": "000000003845",
+    "gt_total": 12,
+    "gt_small": 0,
+    "det_baseline": 8,
+    "det_ab4": 9,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000003845.jpg"
+  },
+  {
+    "image_id": "000000003934",
+    "gt_total": 14,
+    "gt_small": 6,
+    "det_baseline": 10,
+    "det_ab4": 11,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000003934.jpg"
+  },
+  {
+    "image_id": "000000006471",
+    "gt_total": 12,
+    "gt_small": 2,
+    "det_baseline": 10,
+    "det_ab4": 11,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000006471.jpg"
+  },
+  {
+    "image_id": "000000006763",
+    "gt_total": 6,
+    "gt_small": 0,
+    "det_baseline": 4,
+    "det_ab4": 5,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000006763.jpg"
+  },
+  {
+    "image_id": "000000007511",
+    "gt_total": 14,
+    "gt_small": 12,
+    "det_baseline": 3,
+    "det_ab4": 4,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007511.jpg"
+  },
+  {
+    "image_id": "000000008021",
+    "gt_total": 6,
+    "gt_small": 3,
+    "det_baseline": 3,
+    "det_ab4": 4,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000008021.jpg"
+  },
+  {
+    "image_id": "000000008277",
+    "gt_total": 13,
+    "gt_small": 0,
+    "det_baseline": 4,
+    "det_ab4": 5,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000008277.jpg"
+  },
+  {
+    "image_id": "000000008844",
+    "gt_total": 7,
+    "gt_small": 0,
+    "det_baseline": 3,
+    "det_ab4": 4,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000008844.jpg"
+  },
+  {
+    "image_id": "000000010707",
+    "gt_total": 15,
+    "gt_small": 2,
+    "det_baseline": 10,
+    "det_ab4": 11,
+    "improvement": 1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000010707.jpg"
+  },
+  {
+    "image_id": "000000001268",
+    "gt_total": 7,
+    "gt_small": 1,
+    "det_baseline": 5,
+    "det_ab4": 5,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001268.jpg"
+  },
+  {
+    "image_id": "000000001584",
+    "gt_total": 11,
+    "gt_small": 8,
+    "det_baseline": 4,
+    "det_ab4": 4,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001584.jpg"
+  },
+  {
+    "image_id": "000000001761",
+    "gt_total": 5,
+    "gt_small": 5,
+    "det_baseline": 0,
+    "det_ab4": 0,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001761.jpg"
+  },
+  {
+    "image_id": "000000002157",
+    "gt_total": 16,
+    "gt_small": 0,
+    "det_baseline": 9,
+    "det_ab4": 9,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000002157.jpg"
+  },
+  {
+    "image_id": "000000005037",
+    "gt_total": 7,
+    "gt_small": 5,
+    "det_baseline": 4,
+    "det_ab4": 4,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000005037.jpg"
+  },
+  {
+    "image_id": "000000005586",
+    "gt_total": 13,
+    "gt_small": 8,
+    "det_baseline": 4,
+    "det_ab4": 4,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000005586.jpg"
+  },
+  {
+    "image_id": "000000006954",
+    "gt_total": 5,
+    "gt_small": 0,
+    "det_baseline": 5,
+    "det_ab4": 5,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000006954.jpg"
+  },
+  {
+    "image_id": "000000007574",
+    "gt_total": 12,
+    "gt_small": 1,
+    "det_baseline": 10,
+    "det_ab4": 10,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007574.jpg"
+  },
+  {
+    "image_id": "000000007818",
+    "gt_total": 11,
+    "gt_small": 1,
+    "det_baseline": 4,
+    "det_ab4": 4,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007818.jpg"
+  },
+  {
+    "image_id": "000000009400",
+    "gt_total": 24,
+    "gt_small": 1,
+    "det_baseline": 22,
+    "det_ab4": 22,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009400.jpg"
+  },
+  {
+    "image_id": "000000011197",
+    "gt_total": 7,
+    "gt_small": 3,
+    "det_baseline": 4,
+    "det_ab4": 4,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000011197.jpg"
+  },
+  {
+    "image_id": "000000011511",
+    "gt_total": 8,
+    "gt_small": 1,
+    "det_baseline": 6,
+    "det_ab4": 6,
+    "improvement": 0,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000011511.jpg"
+  },
+  {
+    "image_id": "000000000139",
+    "gt_total": 20,
+    "gt_small": 10,
+    "det_baseline": 14,
+    "det_ab4": 13,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000000139.jpg"
+  },
+  {
+    "image_id": "000000000632",
+    "gt_total": 17,
+    "gt_small": 11,
+    "det_baseline": 6,
+    "det_ab4": 5,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000000632.jpg"
+  },
+  {
+    "image_id": "000000001353",
+    "gt_total": 6,
+    "gt_small": 0,
+    "det_baseline": 7,
+    "det_ab4": 6,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001353.jpg"
+  },
+  {
+    "image_id": "000000001503",
+    "gt_total": 5,
+    "gt_small": 1,
+    "det_baseline": 5,
+    "det_ab4": 4,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000001503.jpg"
+  },
+  {
+    "image_id": "000000002299",
+    "gt_total": 13,
+    "gt_small": 0,
+    "det_baseline": 12,
+    "det_ab4": 11,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000002299.jpg"
+  },
+  {
+    "image_id": "000000004134",
+    "gt_total": 23,
+    "gt_small": 8,
+    "det_baseline": 17,
+    "det_ab4": 16,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000004134.jpg"
+  },
+  {
+    "image_id": "000000005001",
+    "gt_total": 16,
+    "gt_small": 0,
+    "det_baseline": 14,
+    "det_ab4": 13,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000005001.jpg"
+  },
+  {
+    "image_id": "000000006040",
+    "gt_total": 9,
+    "gt_small": 8,
+    "det_baseline": 2,
+    "det_ab4": 1,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000006040.jpg"
+  },
+  {
+    "image_id": "000000006771",
+    "gt_total": 9,
+    "gt_small": 0,
+    "det_baseline": 11,
+    "det_ab4": 10,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000006771.jpg"
+  },
+  {
+    "image_id": "000000008629",
+    "gt_total": 7,
+    "gt_small": 0,
+    "det_baseline": 8,
+    "det_ab4": 7,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000008629.jpg"
+  },
+  {
+    "image_id": "000000009483",
+    "gt_total": 6,
+    "gt_small": 3,
+    "det_baseline": 7,
+    "det_ab4": 6,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009483.jpg"
+  },
+  {
+    "image_id": "000000009590",
+    "gt_total": 29,
+    "gt_small": 10,
+    "det_baseline": 17,
+    "det_ab4": 16,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009590.jpg"
+  },
+  {
+    "image_id": "000000009914",
+    "gt_total": 6,
+    "gt_small": 0,
+    "det_baseline": 7,
+    "det_ab4": 6,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009914.jpg"
+  },
+  {
+    "image_id": "000000011699",
+    "gt_total": 6,
+    "gt_small": 0,
+    "det_baseline": 7,
+    "det_ab4": 6,
+    "improvement": -1,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000011699.jpg"
+  },
+  {
+    "image_id": "000000007816",
+    "gt_total": 10,
+    "gt_small": 0,
+    "det_baseline": 9,
+    "det_ab4": 7,
+    "improvement": -2,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007816.jpg"
+  },
+  {
+    "image_id": "000000009378",
+    "gt_total": 9,
+    "gt_small": 0,
+    "det_baseline": 7,
+    "det_ab4": 5,
+    "improvement": -2,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000009378.jpg"
+  },
+  {
+    "image_id": "000000007977",
+    "gt_total": 5,
+    "gt_small": 4,
+    "det_baseline": 4,
+    "det_ab4": 1,
+    "improvement": -3,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000007977.jpg"
+  },
+  {
+    "image_id": "000000000885",
+    "gt_total": 8,
+    "gt_small": 4,
+    "det_baseline": 8,
+    "det_ab4": 4,
+    "improvement": -4,
+    "path": "D:\\Desktop\\paper\\robot\\pp\\rcr_yolo\\datasets\\coco_indoor\\val\\images\\000000000885.jpg"
+  }
+]

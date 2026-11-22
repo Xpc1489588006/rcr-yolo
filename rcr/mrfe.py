@@ -48,6 +48,13 @@ class MRFE(nn.Module):
 
     def forward(self, x):
         w = self.gate(x)  # (B, n_branch)
+
+        # Store weights for visualization (optional, controlled by attribute)
+        if hasattr(self, '_save_attention_weights') and self._save_attention_weights:
+            if not hasattr(self, 'attention_weights'):
+                self.attention_weights = []
+            self.attention_weights.append(w.detach().cpu())
+
         out = None
         for i, b in enumerate(self.branches):
             fi = b(x)

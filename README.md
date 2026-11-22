@@ -1,75 +1,31 @@
 # RCR-YOLO
 
-Lightweight indoor difficult-object detector for unstructured service-robot scenes.
+面向室内非结构化场景困难目标（小目标、遮挡、拥挤场景）的轻量级目标检测研究：基于 YOLO11n 的 ORB-In / MRFE / LCRBase 三模块改进（RCR-YOLO）。
 
-RCR-YOLO builds on YOLO11n and combines:
+## 目录结构
 
-- **ORB-In** — training-time object reconstruction branch (mask + edge dual target,
-  attached to P2). Discarded at inference: **zero extra params/FLOPs/latency**.
-- **LCR** — lightweight easy-help-hard context reasoning (with `LCRBase` fallback variant).
-- **MRFE-Neck** — multi-receptive-field adaptive enhancement with dynamic fusion (GSConv).
-- **PK training** — two-stage prior-knowledge transfer (COCO-indoor prior → target domain).
+| 目录 | 说明 |
+|---|---|
+| `rcr/` | 核心模块代码（ORB-In、MRFE、LCRBase、trainer 补丁） |
+| `cfg/` | 模型结构 YAML（基线与消融组合） |
+| `data/` | 数据集构建脚本（SUN RGB-D → COCO-indoor） |
+| `datasets/` | 数据集存放（git 忽略；`coco_indoor` 约 15GB，`sunrgbd_raw` 为原始压缩包） |
+| `slurm/` | 集群训练 / 评估 / 统计作业脚本 |
+| `scripts/` | 本地辅助脚本 |
+| `tools/` | 论文图表与统计工具（图生成、指标核验、统计检验） |
+| `tests/` | 冒烟测试 |
+| `vis/` | 可视化脚本 |
+| `paper/` | 论文工作区：`paper_english.tex`（英文最终版）、`paper_chinese.tex`（中文版）、`figures/`、`tables/` |
+| `docs/` | `manuals/`（部署与运维手册）、`records/`（实验记录）、`reports/`（过程报告，git 忽略） |
+| `results/` | 核验指标（verified_metrics）与统计检验结果 |
+| `runs/` | 训练输出（`rcr300/` 为 300 轮正式结果；git 忽略，权重经 LFS） |
+| `logs/` | 训练日志（`t300/` 为 300 轮瘦身日志） |
+| `reference/` | 参考文献 PDF（git 忽略） |
 
-## Layout
+## 快速入口
 
-```
-rcr/                 core modules + ultralytics registration + trainer
-cfg/                 model yaml generator + 6 ablation variants
-data/                COCO-indoor builder; SUN RGB-D / AVD / TUT converters
-train.py             single-stage training entry
-train_pk.py          PK two-stage prior-knowledge training
-eval_hard.py         AP_S / AP_M / occlusion-bucketed AP (pure python)
-vis/visualize.py     Grad-CAM + ORB-In reconstruction visualization
-scripts/             local ablation queue (PowerShell)
-slurm/               GPU-platform job scripts (baseline / full / ablation / PK / eval)
-tests/smoke_test.py  CPU smoke test (module forward, yaml build, 1-epoch synthetic train)
-```
-
-## Setup
-
-```bash
-pip install -r requirements.txt        # CUDA wheel of torch installed separately
-python tests/smoke_test.py             # verify the whole pipeline (CPU-friendly)
-```
-
-## Data
-
-Build the COCO-indoor training set from COCO 2017 (45 indoor classes):
-
-```bash
-python data/make_coco_indoor.py --coco /path/to/coco2017 --out datasets/coco_indoor
-# --no-links: labels+yaml only (portable relative-path yaml for cluster sync)
-```
-
-Cross-domain test sets (SUN RGB-D / AVD / TUT Indoor):
-
-```bash
-python data/convert_robot_datasets.py --help
-```
-
-## Train
-
-```bash
-# full model
-python train.py --model cfg/yolo11n-rcr.yaml --data datasets/coco_indoor/coco_indoor.yaml
-
-# PK two-stage transfer (e.g. to SUN RGB-D)
-python train_pk.py --model cfg/yolo11n-rcr.yaml \
-    --stage1-data datasets/coco_indoor/coco_indoor.yaml \
-    --stage2-data datasets/sunrgbd/sunrgbd.yaml
-```
-
-On a SLURM cluster: `sbatch slurm/ablation.sh` (7-variant ablation array job),
-see `slurm/*.sh` for baseline / full / PK / hard-eval jobs.
-
-## Evaluate
-
-```bash
-python eval_hard.py --weights runs/rcr/rcr-full/weights/best.pt \
-                    --data datasets/coco_indoor/coco_indoor.yaml
-```
-
-## Cited foundations
-
-Adapted from ORFENet (TGRS 2024), CRNet (TMM 2024), IENet (Neurocomputing 2021),
-IOVRM (JKSU-CIS 2026) and YOLO-SM (TETCI 2024) for indoor service-robot detection.
+- 训练（300 轮全量协议）：`slurm/train300.sh`；本地入口 `train.py`
+- 困难子集评估：`eval_hard.py`
+- 数据准备：`data/make_coco_indoor.py`（SUN RGB-D → coco_indoor）
+- 论文编译：英文版 `cd paper && latexmk -pdf paper_english.tex`（pdfLaTeX）；中文版 `latexmk -xelatex paper_chinese.tex`（XeLaTeX）
+- 部署与运维：`docs/manuals/`

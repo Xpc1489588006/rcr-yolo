@@ -13,7 +13,7 @@
 | 登录节点 | `control06`（Ubuntu 22.04.5） |
 | 计算节点示例 | `control03` |
 | GPU | **NVIDIA A40（44GB 显存）**，分区 `p3` |
-| 项目路径 | `/data/home/zhaozhanshan/rcr/rcr_yolo` |
+| 项目路径 | `/data/home/zhaozhanshan/rcr/rcr_yolo_c0ffed2`（统一代码目录，固定 `c0ffed2`）|
 | conda 环境 | `rcr` |
 | Python | 3.12.13 |
 | torch | 2.5.1+cu121 |
@@ -49,30 +49,29 @@ pip install --force-reinstall opencv-python-headless
 
 ## 3. Git 同步流程
 
-### 3.1 首次接入（已有手动上传的目录）
+### 3.1 当前统一代码目录
+
+服务器端统一在 `~/rcr/rcr_yolo_c0ffed2` 使用代码；本地工作区也以 `c0ffed2` 为基线。训练、评测、日志和结果分析命令均先进入该目录。不要切换到 `~/rcr/rcr_yolo`，也不要在这个工作副本执行 `git pull origin main` 或 `git reset --hard origin/main`，以免代码版本与本地及服务器约定不一致。
+
 ```bash
-cd ~/rcr/rcr_yolo
-git init -b main
-git remote add origin https://github.com/Xpc1489588006/rcr-yolo.git
-git fetch origin
-git reset --hard origin/main     # 对齐远端；datasets/ 被 ignore，不受影响
+cd ~/rcr/rcr_yolo_c0ffed2
+git rev-parse --short HEAD       # 应为 c0ffed2
+git status --short --branch
 ```
 
-### 3.2 日常更新（本地推送后）
-```bash
-cd ~/rcr/rcr_yolo
-git pull origin main
-```
+需要核对远端时可以 fetch，但保持当前固定版本；只有明确决定切换共同基线后，才更新此工作副本。
 
-### 3.3 换行符
+### 3.2 换行符
+
 - `.sh` 由 `.gitattributes` 强制 LF，克隆/拉取后在 Linux 可直接执行。
-- 手动从 Windows 上传的文件会带 CRLF，导致 `git status` 全部显示 modified（纯噪声）。用 `git reset --hard origin/main` 对齐即可，**不要** `git add . && commit`。
+- 手动从 Windows 上传的文件会带 CRLF，导致 `git status` 显示 modified。先检查差异并修复换行符；**不要用 `git reset --hard origin/main` 清理**。
 
-### 3.4 本机推送遇到代理报错
-本机 git 走代理 `127.0.0.1:7897`。若报 `Failed to connect to 127.0.0.1:7897` 或 `Connection reset`：
+### 3.3 本机推送遇到代理报错
+
+本机 git 走代理 `127.0.0.1:7897`。若报 `Failed to connect to 127.0.0.1:7897` 或 `Connection reset`，且已确认目标分支与 `c0ffed2` 基线一致：
 ```bash
-git -c http.proxy= -c https.proxy= push origin main   # 临时禁用代理（不改配置）
-# 或代理可用时直接 git push origin main
+git -c http.proxy= -c https.proxy= push origin <已确认的分支>   # 临时禁用代理（不改配置）
+# 不要将此固定基线推送到 origin/main
 ```
 
 ---
@@ -120,7 +119,7 @@ Windows 生成的 yaml 是绝对路径；SLURM 脚本内置 `sed` 会把 `path` 
 
 ### 5.2 提交（必须在项目目录下，脚本用 `SLURM_SUBMIT_DIR` 定位）
 ```bash
-cd ~/rcr/rcr_yolo
+cd ~/rcr/rcr_yolo_c0ffed2
 mkdir -p logs
 sbatch slurm/train_baseline.sh
 squeue -u $USER
@@ -167,7 +166,7 @@ sbatch slurm/eval_hard.sh
 | # | 现象 | 根因 | 修复 |
 |---|---|---|---|
 | 1 | SLURM 激活环境失败 | 脚本写死旧环境 `xpc` | 改为 `conda activate rcr` |
-| 2 | `git status` 全文件 modified | 手动上传带 CRLF | `git reset --hard origin/main` |
+| 2 | `git status` 显示文件 modified | 手动上传带 CRLF | 检查并修复换行符；不要硬重置到 `origin/main` |
 | 3 | `import cv2` 报 `libGL.so.1` 缺失 | ultralytics 拉入 GUI 版 opencv | 换 `opencv-python-headless` |
 | 4 | `Dataset images not found ... rcr_yolo/val/images` | yaml `path: .` 被按运行目录解析 | `sed` 写入数据集目录**绝对路径** |
 | 5 | batch128 时 CPU 内存 OOM | 8 worker × prefetch4 ≈ 30G 超 32G | `--mem` 32G→64G |

@@ -1,0 +1,63 @@
+% TABLE V: 效率对比（RTX 4090, FP32, batch=1）
+
+\begin{table}[t]
+\centering
+\caption{计算效率对比：参数量、FLOPs与推理延迟（RTX 4090, FP32, batch=1）}
+\label{tab:efficiency}
+\begin{tabular}{l|ccc|cc}
+\hline
+\multirow{2}{*}{\textbf{配置}} & \multicolumn{3}{c|}{\textbf{模型复杂度}} & \multicolumn{2}{c}{\textbf{推理性能}} \\
+& Params(M) & GFLOPs & 增量 & Latency(ms) & FPS \\
+\hline
+\hline
+baseline-yolo11n & 2.59 & 6.55 & - & 6.65 & 150 \\
+\hline
+ab1-orb & 2.67 (+0.08) & 6.61 (+0.06) & +3.1\% & 6.52 & 153 \\
+ab2-mrfe & 2.84 (+0.25) & 7.18 (+0.63) & +9.6\% & 9.40 & 106 \\
+ab3-lcr & 2.95 (+0.36) & 7.02 (+0.47) & +7.2\% & 7.89 & 127 \\
+ab3b-lcrbase & 2.91 (+0.32) & 6.94 (+0.39) & +6.0\% & 7.56 & 132 \\
+\hline
+ab5-orbmrfe & 2.92 (+0.33) & 7.24 (+0.69) & +10.5\% & 9.33 & 107 \\
+mrfelcrb & 3.16 (+0.57) & 7.55 (+1.00) & +15.3\% & 10.33 & 97 \\
+orblcrb & 2.99 (+0.40) & 7.00 (+0.45) & +6.9\% & 7.49 & 134 \\
+\hline
+\textbf{ab4-rcr-fb} & \textbf{3.17} (+0.58) & \textbf{7.66} (+1.11) & \textbf{+17.0\%} & \textbf{10.36} & \textbf{96} \\
+rcr-full & 3.24 (+0.65) & 7.78 (+1.23) & +18.8\% & 10.80 & 93 \\
+\hline
+\hline
+\multicolumn{6}{l}{\textit{训练-推理参数差异（含/不含ORB-In）}} \\
+\hline
+ab4-rcr-fb（训练） & 3.245 & - & - & N/A & N/A \\
+ab4-rcr-fb（部署） & 3.174 & 7.66 & - & 10.36 & 96 \\
+ORB-In开销 & 0.071 & - & - & \textbf{0.00} & - \\
+\hline
+\hline
+\multicolumn{6}{l}{\textit{性能-效率权衡分析}} \\
+\hline
+\textbf{指标} & \multicolumn{5}{c}{\textbf{ab4 vs baseline}} \\
+\hline
+mAP50-95提升 & \multicolumn{5}{c}{+0.0123 (+3.72\%)} \\
+参数增加 & \multicolumn{5}{c}{+0.58M (+22.4\%)} \\
+延迟增加 & \multicolumn{5}{c}{+3.71ms (+55.8\%)} \\
+性能/延迟比 & \multicolumn{5}{c}{\textbf{1.00\%/ms}} \\
+性能/参数比 & \multicolumn{5}{c}{\textbf{0.064\%/M}} \\
+\hline
+\end{tabular}
+\begin{tablenotes}
+\small
+\item \textbf{测试环境}：NVIDIA RTX 4090（24GB显存），FP32精度，batch=1，输入尺寸640$\times$640，100次推理取平均。
+\item \textbf{Params(M)}：模型参数量（百万）。\textbf{部署参数}不含训练时的ORB-In模块（0.075M），\textbf{训练参数}包含ORB-In。
+\item \textbf{GFLOPs}：针对640$\times$640输入的浮点运算量（十亿次）。
+\item \textbf{Latency(ms)}：单张图像推理延迟（毫秒），\textbf{FPS}：每秒帧数，$\text{FPS} = 1000 / \text{Latency}$。
+\item \textbf{增量}：相对baseline的参数和FLOPs增加量及百分比。
+\item \textbf{关键发现}：
+  \begin{itemize}
+    \item \textbf{ORB-In零推理开销}：训练参数3.245M，部署参数3.174M，推理时完全旁路，延迟无增加
+    \item \textbf{MRFE主要开销}：单MRFE模块增加+2.75ms（占ab4总增量3.71ms的74\%），三并行膨胀卷积和动态权重是主要来源
+    \item \textbf{LCRBase轻量化}：仅增加+0.91ms，相比完整LCR（+1.24ms）节省约27\%延迟
+    \item \textbf{实时性能保持}：ab4延迟10.36ms（~96 FPS）远小于服务机器人15ms预算，满足实时要求
+    \item \textbf{性能-效率权衡合理}：+3.72\%性能提升换取+3.71ms延迟，性能/延迟比1.00\%/ms优于单模块
+  \end{itemize}
+\item \textbf{部署建议}：服务器端（RTX 4090+）直接部署；边缘设备（Jetson Orin/Xavier）可通过FP16/INT8量化进一步优化；资源极受限场景可考虑ab2-mrfe（9.40ms，性能+1.75\%）。
+\end{tablenotes}
+\end{table}

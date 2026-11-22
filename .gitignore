@@ -1,10 +1,26 @@
-# datasets are too large for git (COCO-indoor ~15GB); see README for preparation
+# datasets are too large for git (COCO-indoor ~15GB); see data/ scripts for preparation
 datasets/
 
-# training outputs: runs/ is tracked (metrics/plots in git, weights via Git LFS)
-# SLURM stdout/stderr logs are huge and regenerable -> keep ignored
+# training outputs & raw logs: bulk ignored (run metrics/plots tracked on server, weights via LFS)
+runs/
 logs/
+reference/
 vis_out/
+
+# session process reports (regenerable, kept locally only)
+docs/reports/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.xdv
+*.fls
+*.fdb_latexmk
+*.toc
 
 # caches & python artifacts
 *.cache
@@ -15,3 +31,6 @@ __pycache__/
 
 # temp
 *.tmp
+
+# large figures exceed GitHub 100MB limit, keep local only
+*.tiff

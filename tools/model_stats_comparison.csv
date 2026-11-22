@@ -1,0 +1,4 @@
+name,end2end,params_ckpt_M,params_deploy_M,gflops,latency_ms,weights
+yolov8n,False,3.02,3.02,8.24,,runs/rcr300/yolov8n-s0/weights/best.pt
+yolov10n,True,2.725,2.285,6.77,,runs/rcr300/yolov10n-s0/weights/best.pt
+yolo26n,True,2.521,2.392,5.49,,runs/rcr300/yolo26n-s0/weights/best.pt
