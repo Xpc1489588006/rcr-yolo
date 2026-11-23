@@ -109,7 +109,10 @@ def _load_sunrgbd_2dboxes(root):
     mat = loadmat(str(meta_mat), squeeze_me=True, struct_as_record=False)
     recs = []
     for r in np.atleast_1d(mat["SUNRGBDMeta2DBB"]).flatten():
-        for b in np.atleast_1d(getattr(r, "groundtruth2DBB", None) or []).flatten():
+        bb = getattr(r, "groundtruth2DBB", None)
+        if bb is None:
+            continue
+        for b in np.atleast_1d(bb).flatten():
             x1, y1, x2, y2 = (float(v) for v in np.atleast_1d(b.gtBb2D).flatten()[:4])
             recs.append(SimpleNamespace(
                 rgbname=str(r.rgbpath).replace("\\", "/").replace(
