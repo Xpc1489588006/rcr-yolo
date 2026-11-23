@@ -108,6 +108,10 @@ def _load_sunrgbd_2dboxes(root):
     whose groundtruth2DBB entries hold classname + gtBb2D). Expand those into the
     per-box shape cmd_sunrgbd expects: rgbname / classname / bbox[x1,y1,x2,y2]
     (4-element bbox -> wh resolved via cv2 later, same as legacy path).
+    gtBb2D is [x, y, w, h] in PIXELS (verified on all 80220 boxes: v[2]>0 &
+    v[3]>0 holds 100%, while an x1y1x2y2 reading only holds 22%) — converted
+    to x1y1x2y2 here; misreading it made 79% of class10 boxes negative-width
+    "degenerate" and silently dropped 3126 frames.
     """
     import numpy as np
     from types import SimpleNamespace
@@ -131,12 +135,12 @@ def _load_sunrgbd_2dboxes(root):
         if bb is None:
             continue
         for b in np.atleast_1d(bb).flatten():
-            x1, y1, x2, y2 = (float(v) for v in np.atleast_1d(b.gtBb2D).flatten()[:4])
+            x, y, w_b, h_b = (float(v) for v in np.atleast_1d(b.gtBb2D).flatten()[:4])
             recs.append(SimpleNamespace(
                 rgbname=str(r.rgbpath).replace("\\", "/").replace(
                     "/n/fs/sun3d/data/SUNRGBD/", ""),
                 classname=b.classname,
-                bbox=np.array([x1, y1, x2, y2]),
+                bbox=np.array([x, y, x + w_b, y + h_b]),
             ))
     return recs, "SUNRGBDMeta2DBB_v2.mat (expanded to per-box)"
 
