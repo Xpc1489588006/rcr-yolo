@@ -63,17 +63,25 @@ def main():
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--device", default="0")
     ap.add_argument("--project", default="runs/rcr-pk")
+    ap.add_argument("--name", default="",
+                    help="run-name tag (stage dirs become <tag>-stage1-prior / <tag>-stage2-target); "
+                         "defaults to model stem minus the 'yolo11n-' prefix. REQUIRED when "
+                         "multiple PK jobs share one project dir, else they overwrite each other.")
     args = ap.parse_args()
+
+    tag = args.name or Path(args.model).stem
+    if tag.startswith("yolo11n-"):
+        tag = tag[len("yolo11n-"):]  # yolo11n-rcr -> rcr; bare yolo11n stays intact
 
     if args.stage1_weights:
         w1 = Path(args.stage1_weights)
     else:
         _, w1 = run_stage(args.model, args.stage1_data, args.epochs1, 0.01,
-                          args.project, "stage1-prior", args.batch, args.imgsz, args.device)
+                          args.project, f"{tag}-stage1-prior", args.batch, args.imgsz, args.device)
     print(f"[PK] stage-1 prior weights: {w1}")
 
     trainer2, _ = run_stage(str(w1), args.stage2_data, args.epochs2, 0.001,
-                            args.project, "stage2-target", args.batch, args.imgsz, args.device)
+                            args.project, f"{tag}-stage2-target", args.batch, args.imgsz, args.device)
     m = trainer2.metrics or {}
     map50 = float(m.get("metrics/mAP50(B)", float("nan")))
     map5095 = float(m.get("metrics/mAP50-95(B)", float("nan")))

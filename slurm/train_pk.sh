@@ -17,8 +17,10 @@
 # 硬件要求：1× RTX 4090 24GB
 # 用法：先用 data/convert_robot_datasets.py 转换目标域数据，然后
 #   sbatch slurm/train_pk.sh
+#   MODEL=cfg/yolo11n-rcrfb.yaml NAME=pk-rcrfb STAGE1_WEIGHTS=... sbatch slurm/train_pk.sh
 #   STAGE2_DATA=datasets/avd/avd.yaml sbatch slurm/train_pk.sh   # 换目标域
-#   STAGE1_WEIGHTS=runs/rcr-pk/stage1-prior/weights/best.pt sbatch slurm/train_pk.sh  # 复用阶段一
+#   STAGE1_WEIGHTS=runs/rcr-pk/<tag>-stage1-prior/weights/best.pt sbatch slurm/train_pk.sh  # 复用阶段一
+# 多作业共享同一 project 时必须显式 NAME，否则同名目录互相覆盖（串写）
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -63,11 +65,16 @@ if [ -n "$STAGE1_WEIGHTS" ]; then
     EXTRA+=(--stage1-weights "$STAGE1_WEIGHTS")
     echo "复用已有阶段一权重: $STAGE1_WEIGHTS"
 fi
+if [ -n "$NAME" ]; then
+    EXTRA+=(--name "$NAME")
+    echo "运行名 tag: $NAME"
+fi
 
-python train_pk.py --model cfg/yolo11n-rcr.yaml \
+# BATCH 默认 64：与 300 轮全量重训协议一致（24G 4090 约束）；旧默认 128 已弃
+python train_pk.py --model "${MODEL:-cfg/yolo11n-rcr.yaml}" \
     --stage1-data "$DATA" --stage2-data "$STAGE2_DATA" \
     --epochs1 "${EPOCHS1:-150}" --epochs2 "${EPOCHS2:-100}" \
-    --batch "${BATCH:-128}" --device "${DEVICE:-0}" \
+    --batch "${BATCH:-64}" --device "${DEVICE:-0}" \
     --project "$PROJECT_ROOT/runs/rcr-pk" "${EXTRA[@]}"
 
 END_TIME=$(date +%s)
