@@ -21,6 +21,11 @@
 #   STAGE2_DATA=datasets/avd/avd.yaml sbatch slurm/train_pk.sh   # 换目标域
 #   STAGE1_WEIGHTS=runs/rcr-pk/<tag>-stage1-prior/weights/best.pt sbatch slurm/train_pk.sh  # 复用阶段一
 # 多作业共享同一 project 时必须显式 NAME，否则同名目录互相覆盖（串写）
+# shard 模式提交（命令行 --gres 覆盖脚本默认 gpu:1；workers 已默认降 4）：
+#   sbatch -p p3 -w control06 --gres=shard:24 --cpus-per-task=8 --mem=64G --time=48:00:00 \
+#     --export=ALL,MODEL=cfg/yolo11n-rcrfb.yaml,NAME=pk-sunrgbd-rcrfb,STAGE1_WEIGHTS=runs/rcr300/ab4_rcr_fb_s0/weights/best.pt \
+#     slurm/train_pk.sh
+#   A40 节点： --gres=shard:NVIDIA_A40:12 -w control03
 # ============================================================
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
@@ -75,6 +80,7 @@ python train_pk.py --model "${MODEL:-cfg/yolo11n-rcr.yaml}" \
     --stage1-data "$DATA" --stage2-data "$STAGE2_DATA" \
     --epochs1 "${EPOCHS1:-150}" --epochs2 "${EPOCHS2:-100}" \
     --batch "${BATCH:-64}" --device "${DEVICE:-0}" \
+    --workers "${WORKERS:-4}" \
     --project "$PROJECT_ROOT/runs/rcr-pk" "${EXTRA[@]}"
 
 END_TIME=$(date +%s)

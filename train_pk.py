@@ -26,7 +26,7 @@ register_rcr_modules()
 from rcr.trainer import RCRTrainer  # noqa: E402
 
 
-def run_stage(model, data, epochs, lr0, project, name, batch, imgsz, device):
+def run_stage(model, data, epochs, lr0, project, name, batch, imgsz, device, workers):
     trainer = RCRTrainer(
         overrides=dict(
             model=model,
@@ -36,6 +36,7 @@ def run_stage(model, data, epochs, lr0, project, name, batch, imgsz, device):
             imgsz=imgsz,
             device=device,
             lr0=lr0,
+            workers=workers,
             patience=50,
             project=project,
             name=name,
@@ -62,6 +63,9 @@ def main():
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--device", default="0")
+    ap.add_argument("--workers", type=int, default=4,
+                    help="dataloader workers; 4 (not ultralytics' 8) matches the cluster "
+                         "convention for shard-submitted jobs")
     ap.add_argument("--project", default="runs/rcr-pk")
     ap.add_argument("--name", default="",
                     help="run-name tag (stage dirs become <tag>-stage1-prior / <tag>-stage2-target); "
@@ -77,11 +81,13 @@ def main():
         w1 = Path(args.stage1_weights)
     else:
         _, w1 = run_stage(args.model, args.stage1_data, args.epochs1, 0.01,
-                          args.project, f"{tag}-stage1-prior", args.batch, args.imgsz, args.device)
+                          args.project, f"{tag}-stage1-prior", args.batch, args.imgsz, args.device,
+                          args.workers)
     print(f"[PK] stage-1 prior weights: {w1}")
 
     trainer2, _ = run_stage(str(w1), args.stage2_data, args.epochs2, 0.001,
-                            args.project, f"{tag}-stage2-target", args.batch, args.imgsz, args.device)
+                            args.project, f"{tag}-stage2-target", args.batch, args.imgsz, args.device,
+                            args.workers)
     m = trainer2.metrics or {}
     map50 = float(m.get("metrics/mAP50(B)", float("nan")))
     map5095 = float(m.get("metrics/mAP50-95(B)", float("nan")))
