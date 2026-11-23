@@ -22,6 +22,7 @@ prints what it expected instead of failing silently.
 
 import argparse
 import shutil
+from collections import Counter
 from pathlib import Path
 
 import cv2
@@ -74,15 +75,24 @@ def in_split(rgbname, split_set):
     return _sample_key(rgbname) in split_set
 
 
-def write_set(out: Path, entries, names, split):
-    """entries: list of (src_img_path, [(cls, cx, cy, w, h) normalized])."""
+def write_set(out: Path, entries, names, split, name_of=None):
+    """entries: list of (src_img_path, [(cls, cx, cy, w, h) normalized]).
+
+    name_of(src) -> output stem; default Path(src).stem. SUN RGB-D frame
+    names repeat across sample dirs (image/0000103.jpg everywhere in kv2/
+    realsense), so the sunrgbd converter MUST pass a globally unique
+    name_of — otherwise same-named frames overwrite each other's images
+    while their label files get rewritten, silently pairing image A with
+    labels B.
+    """
     (out / split / "images").mkdir(parents=True, exist_ok=True)
     (out / split / "labels").mkdir(parents=True, exist_ok=True)
     for src, boxes in entries:
-        dst = out / split / "images" / Path(src).name
+        stem = name_of(src) if name_of else Path(src).stem
+        dst = out / split / "images" / (stem + Path(src).suffix)
         if not dst.exists():
             shutil.copy2(src, dst)
-        with open(out / split / "labels" / (Path(src).stem + ".txt"), "w") as f:
+        with open(out / split / "labels" / (stem + ".txt"), "w") as f:
             for b in boxes:
                 f.write("%d %.6f %.6f %.6f %.6f\n" % b)
     yaml_txt = f"path: {out.resolve().as_posix()}\ntrain: train/images\nval: val/images\nnc: {len(names)}\nnames: {names}\n"
@@ -142,6 +152,8 @@ def cmd_sunrgbd(args):
     names = SUNRGBD_CLASS10 if args.classes10 else build_vocab(boxes2d)
     split_set = load_split_file(args.split_file) if args.split_file else None
     train, test = {}, {}
+    name_map = {}  # img_path -> globally unique output stem
+    miss, read_fail = Counter(), Counter()  # per-sensor drop diagnostics
     for rec in boxes2d:
         img_rel = str(rec.rgbname).replace("\\", "/")
         cls = str(rec.classname).strip()
@@ -155,11 +167,13 @@ def cmd_sunrgbd(args):
                     img_path = cand
                     break
             else:
+                miss[img_rel.split("/")[0]] += 1
                 continue
         h, w = (float(rec.bbox[4]), float(rec.bbox[5])) if rec.bbox.size > 4 else (None, None)
         if not h:
             im = cv2.imread(str(img_path))
             if im is None:
+                read_fail[img_rel.split("/")[0]] += 1
                 continue
             h, w = im.shape[:2]
         cx, cy = ((x1 + x2) / 2) / w, ((y1 + y2) / 2) / h
@@ -167,16 +181,25 @@ def cmd_sunrgbd(args):
         if bw <= 0 or bh <= 0:
             continue
         key = str(img_path)
+        if key not in name_map:
+            segs = [p for p in img_rel.split("/") if p]
+            sample = segs[-3] if segs[-2] == "image" else segs[-1]
+            frame = segs[-1].rsplit(".", 1)[0]
+            name_map[key] = f"{segs[0]}__{sample}__{frame}"
         if split_set is not None:
             target = train if in_split(img_rel, split_set) else test
         else:
             target = train  # staging; order-based partition applied below
         target.setdefault(key, []).append((names.index(cls), cx, cy, bw, bh))
+    if miss or read_fail:
+        print(f"dropped: not-on-disk={dict(miss)} cv2-unreadable={dict(read_fail)}")
     if split_set is not None:
         print(f"official split: {len(train)} train / {len(test)} test images")
         out = Path(args.out)
-        write_set(out, sorted(train.items()), names, "train")
-        write_set(out, sorted(test.items()), names, "val")
+        write_set(out, sorted(train.items()), names, "train",
+                  name_of=lambda s: name_map[str(s)])
+        write_set(out, sorted(test.items()), names, "val",
+                  name_of=lambda s: name_map[str(s)])
         return
     # No official split file: fall back to order-based partition, clearly flagged
     print("WARNING: --split-file not given; falling back to ORDER-BASED 80/20 "
