@@ -44,26 +44,24 @@ def build_vocab(records):
     return names
 
 
-def _norm_path(s):
-    return str(s).strip().replace("\\", "/").rsplit(".", 1)[0].lower()
-
-
 def _sample_key(path):
     """Unique sample-directory name for matching.
 
-    Official allsplit lists are SAMPLE-DIRECTORY level (.../<sample>-resize,
-    no trailing /image/xxx.jpg) while annotation rgbpaths are FILE level
-    (.../<sample>-resize/image/xxx.jpg). File basenames repeat across sensors,
-    but the sample-directory name (timestamped) is unique dataset-wide.
-    _norm_path strips the last ".ext": for file paths that removes ".jpg",
-    for directory-only paths it eats the ".150000" inside the dirname —
-    cut once more here so both sides land on the same key.
+    Official allsplit lists are SAMPLE-DIRECTORY level (.../<sample>, often
+    with a trailing slash) while annotation rgbpaths are FILE level
+    (.../<sample>//image/<frame>.jpg — the double slash occurs in kv1/
+    realsense/xtion and part of kv2). Empty segments MUST be dropped first,
+    otherwise parts[-3] lands on '' and every such frame collapses onto one
+    empty key (observed: all four sensors misrouted wholesale to train
+    because '' also appeared in the split key-set). The sample segment is a
+    directory name — never strip an "extension" from it.
     """
-    parts = _norm_path(path).split("/")
+    parts = [p for p in str(path).strip().replace("\\", "/").lower().split("/") if p]
     # annotation rgbpaths end .../<sample>/image/<frame>; split list lines end
-    # .../<sensor>/<sample> — tell them apart by the "image" parent dir
-    key = parts[-3] if len(parts) >= 3 and parts[-2] == "image" else parts[-1]
-    return key.rsplit(".", 1)[0]
+    # .../<sensor...>/<sample> — tell them apart by the "image" parent dir
+    if len(parts) >= 2 and parts[-2] == "image":
+        return parts[-3]
+    return parts[-1]
 
 
 def load_split_file(path):
