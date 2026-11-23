@@ -82,16 +82,52 @@ def write_set(out: Path, entries, names, split):
     print(f"{split}: {len(entries)} images -> {out}")
 
 
+def _load_sunrgbd_2dboxes(root):
+    """Per-box records from SUNRGBD2Dbox.mat, or expanded from SUNRGBDMeta2DBB_v2.mat.
+
+    The official Duke download page never shipped SUNRGBD2Dbox.mat separately; the
+    standard 2-D annotation carrier is SUNRGBDMeta2DBB_v2.mat (per-image records
+    whose groundtruth2DBB entries hold classname + gtBb2D). Expand those into the
+    per-box shape cmd_sunrgbd expects: rgbname / classname / bbox[x1,y1,x2,y2]
+    (4-element bbox -> wh resolved via cv2 later, same as legacy path).
+    """
+    import numpy as np
+    from types import SimpleNamespace
+
+    box_mat = root / "SUNRGBD2Dbox.mat"
+    if box_mat.exists():
+        from scipy.io import loadmat
+        mat = loadmat(str(box_mat), squeeze_me=True, struct_as_record=False)
+        boxes2d = np.atleast_1d(mat["SUNRGBD2Dbox"]).flatten()
+        return boxes2d, "SUNRGBD2Dbox.mat"
+
+    meta_mat = root / "SUNRGBDMeta2DBB_v2.mat"
+    if not meta_mat.exists():
+        raise SystemExit(
+            f"error: neither SUNRGBD2Dbox.mat nor SUNRGBDMeta2DBB_v2.mat found under {root}")
+    from scipy.io import loadmat
+    mat = loadmat(str(meta_mat), squeeze_me=True, struct_as_record=False)
+    recs = []
+    for r in np.atleast_1d(mat["SUNRGBDMeta2DBB"]).flatten():
+        for b in np.atleast_1d(getattr(r, "groundtruth2DBB", None) or []).flatten():
+            x1, y1, x2, y2 = (float(v) for v in np.atleast_1d(b.gtBb2D).flatten()[:4])
+            recs.append(SimpleNamespace(
+                rgbname=str(r.rgbpath).replace("\\", "/").replace(
+                    "/n/fs/sun3d/data/SUNRGBD/", ""),
+                classname=b.classname,
+                bbox=np.array([x1, y1, x2, y2]),
+            ))
+    return recs, "SUNRGBDMeta2DBB_v2.mat (expanded to per-box)"
+
+
 def cmd_sunrgbd(args):
     try:
-        from scipy.io import loadmat
+        from scipy.io import loadmat  # noqa: F401  (kept for parity/other loaders)
     except ImportError:
         raise SystemExit("scipy is required: pip install scipy")
     root = Path(args.root)
-    mat = loadmat(str(root / "SUNRGBD2Dbox.mat"), squeeze_me=True, struct_as_record=False)
-    boxes2d = mat["SUNRGBD2Dbox"]
-    if hasattr(boxes2d, "flatten"):
-        boxes2d = boxes2d.flatten()
+    boxes2d, ann_src = _load_sunrgbd_2dboxes(root)
+    print(f"annotations: {len(boxes2d)} boxes from {ann_src}")
     names = SUNRGBD_CLASS10 if args.classes10 else build_vocab(boxes2d)
     split_set = load_split_file(args.split_file) if args.split_file else None
     train, test = {}, {}
