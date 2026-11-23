@@ -48,22 +48,32 @@ def _norm_path(s):
     return str(s).strip().replace("\\", "/").rsplit(".", 1)[0].lower()
 
 
+def _sample_key(path):
+    """Unique sample-directory name for matching.
+
+    Official allsplit lists are SAMPLE-DIRECTORY level (.../<sample>-resize,
+    no trailing /image/xxx.jpg) while annotation rgbpaths are FILE level
+    (.../<sample>-resize/image/xxx.jpg). File basenames repeat across sensors,
+    but the sample-directory name (timestamped) is unique dataset-wide.
+    _norm_path strips the last ".ext": for file paths that removes ".jpg",
+    for directory-only paths it eats the ".150000" inside the dirname —
+    cut once more here so both sides land on the same key.
+    """
+    parts = _norm_path(path).split("/")
+    # annotation rgbpaths end .../<sample>/image/<frame>; split list lines end
+    # .../<sensor>/<sample> — tell them apart by the "image" parent dir
+    key = parts[-3] if len(parts) >= 3 and parts[-2] == "image" else parts[-1]
+    return key.rsplit(".", 1)[0]
+
+
 def load_split_file(path):
-    """Normalized path tails (extension stripped) from an official split file."""
-    return {_norm_path(l) for l in Path(path).read_text().splitlines() if l.strip()}
+    """Sample-directory keys from an official (directory-level) split file."""
+    return {_sample_key(l) for l in Path(path).read_text().splitlines() if l.strip()}
 
 
 def in_split(rgbname, split_set):
-    """Match by path tail: basenames repeat across sensors (img-000001.jpg),
-    so compare the last path components, progressively widening."""
-    rel = _norm_path(rgbname)
-    parts = rel.split("/")
-    for depth in (4, 3, 2):
-        if len(parts) >= depth:
-            tail = "/".join(parts[-depth:])
-            if any(s.endswith(tail) for s in split_set):
-                return True
-    return False
+    """Match by unique sample-directory key (see _sample_key)."""
+    return _sample_key(rgbname) in split_set
 
 
 def write_set(out: Path, entries, names, split):
