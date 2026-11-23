@@ -186,10 +186,15 @@ def cmd_sunrgbd(args):
             continue
         key = str(img_path)
         if key not in name_map:
+            # xtion sequence dirs (e.g. 0000004-000000100548) REPEAT across scenes
+            # (device counter restarts per session), so the sensor__sample__frame
+            # triple collided 23 times (44 frames got one image paired with
+            # another's labels). Join EVERY non-'image' segment instead —
+            # injective by construction since rel paths are unique.
             segs = [p for p in img_rel.split("/") if p]
-            sample = segs[-3] if segs[-2] == "image" else segs[-1]
-            frame = segs[-1].rsplit(".", 1)[0]
-            name_map[key] = f"{segs[0]}__{sample}__{frame}"
+            parts = [s for s in segs if s != "image"]
+            parts[-1] = parts[-1].rsplit(".", 1)[0]
+            name_map[key] = "__".join(parts)
         if split_set is not None:
             target = train if in_split(img_rel, split_set) else test
         else:
