@@ -29,6 +29,9 @@ def main():
     folds = json.loads((root / "folds.json").read_text())
     out = root / "folds"
     out.mkdir(exist_ok=True)
+    root_abs = root.resolve().as_posix()  # txt lines MUST be absolute: ultralytics
+    # only resolves lines starting with './' or '/', relative lines are used
+    # as-is against the CWD and labels are then not found (train/labels.cache bug)
 
     n_va = 0
     val_union, val_all = set(), []
@@ -36,8 +39,8 @@ def main():
         i = int(k.replace("fold", ""))
         tr = sorted(folds[k]["train"])
         va = sorted(folds[k]["val"])
-        (out / f"fold{i}_train.txt").write_text("\n".join(f"train/images/{f}" for f in tr) + "\n")
-        (out / f"fold{i}_val.txt").write_text("\n".join(f"train/images/{f}" for f in va) + "\n")
+        (out / f"fold{i}_train.txt").write_text("\n".join(f"{root_abs}/train/images/{f}" for f in tr) + "\n")
+        (out / f"fold{i}_val.txt").write_text("\n".join(f"{root_abs}/train/images/{f}" for f in va) + "\n")
         yml = (out / f"cui_fold{i}.yaml")
         yml.write_text(
             f"# Cui-2026 5-fold protocol, fold {i}: {len(tr)} train / {len(va)} val images\n"
