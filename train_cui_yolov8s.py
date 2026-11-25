@@ -35,7 +35,7 @@ COLS = {"P": "metrics/precision(B)", "R": "metrics/recall(B)",
         "mAP50-95": "metrics/mAP50-95(B)"}
 
 
-def train_fold(fold: int, data_root: Path, device: str, workers: int):
+def train_fold(fold: int, data_root: Path, device: str, workers: int, project: str):
     from ultralytics import YOLO
 
     model = YOLO("yolov8s.yaml")  # from scratch (Cui sec 3.1 (ii))
@@ -50,10 +50,22 @@ def train_fold(fold: int, data_root: Path, device: str, workers: int):
         cos_lr=True,         # cosine schedule, lrf stays at ultralytics default
         patience=0,          # fixed 100 epochs, no early stop
         seed=fold,           # distinct init per fold (Cui (iv): no fixed seed)
+        pretrained=False,    # Cui (ii): strictly from scratch
         device=device, workers=workers,
-        project="runs/cui", name=f"yolov8s_fold{fold}",
+        # absolute project: relative paths get re-rooted under runs/detect/ in
+        # ultralytics 8.4.x, breaking the summarize lookup
+        project=str(Path(project).resolve()), name=f"yolov8s_fold{fold}",
         exist_ok=True, verbose=True,
     )
+
+
+def fold_csv(fold: int, project: Path):
+    """results.csv of a fold, tolerating ultralytics' run-dir re-rooting."""
+    for base in (project, Path("runs/detect") / project):
+        p = base / f"yolov8s_fold{fold}" / "results.csv"
+        if p.exists():
+            return p
+    return None
 
 
 def summarize(project: Path):
@@ -62,9 +74,9 @@ def summarize(project: Path):
 
     rows = {}
     for fold in range(5):
-        p = project / f"yolov8s_fold{fold}" / "results.csv"
-        if not p.exists():
-            print(f"[warn] {p} missing, fold {fold} not finished")
+        p = fold_csv(fold, project)
+        if p is None:
+            print(f"[warn] results.csv for fold {fold} not found (checked {project} and runs/detect/{project})")
             continue
         last = list(csv.DictReader(p.open()))[-1]  # final epoch = fixed protocol
         rows[fold] = {k: float(last[c]) * 100 for k, c in COLS.items()}
@@ -97,7 +109,7 @@ def main():
         return
     if args.fold not in range(5):
         ap.error("give --fold 0..4 or --summarize")
-    train_fold(args.fold, Path(args.data), args.device, args.workers)
+    train_fold(args.fold, Path(args.data), args.device, args.workers, args.project)
 
 
 if __name__ == "__main__":

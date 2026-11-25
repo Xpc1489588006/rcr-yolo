@@ -15,9 +15,29 @@ KFold-style proxy on the 9041 training images) and writes for each fold:
 """
 import argparse
 import json
+import os
+import subprocess
 from pathlib import Path
 
 NAMES = ["toilet", "tv", "refrigerator", "microwave", "sink", "chair", "couch", "bed"]
+
+
+def _link_dir(link: Path, target: Path):
+    """Per-fold images/labels dir so each fold gets its own labels.cache.
+
+    Concurrent folds sharing one labels dir race on the SAME cache file
+    (train/labels.cache): a half-written cache raises EOFError on np.load,
+    which ultralytics does NOT catch -> job dies. Junction on Windows,
+    symlink on Linux.
+    """
+    if link.exists():
+        return
+    link.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       check=True, capture_output=True)
+    else:
+        link.symlink_to(target)
 
 
 def main():
@@ -39,8 +59,13 @@ def main():
         i = int(k.replace("fold", ""))
         tr = sorted(folds[k]["train"])
         va = sorted(folds[k]["val"])
-        (out / f"fold{i}_train.txt").write_text("\n".join(f"{root_abs}/train/images/{f}" for f in tr) + "\n")
-        (out / f"fold{i}_val.txt").write_text("\n".join(f"{root_abs}/train/images/{f}" for f in va) + "\n")
+        # per-fold data dir (junction/symlink) -> cache becomes
+        # folds/fold{i}_data/labels.cache, disjoint across folds
+        _link_dir(out / f"fold{i}_data" / "images", root / "train" / "images")
+        _link_dir(out / f"fold{i}_data" / "labels", root / "train" / "labels")
+        fd_abs = (out / f"fold{i}_data").resolve().as_posix()
+        (out / f"fold{i}_train.txt").write_text("\n".join(f"{fd_abs}/images/{f}" for f in tr) + "\n")
+        (out / f"fold{i}_val.txt").write_text("\n".join(f"{fd_abs}/images/{f}" for f in va) + "\n")
         yml = (out / f"cui_fold{i}.yaml")
         yml.write_text(
             f"# Cui-2026 5-fold protocol, fold {i}: {len(tr)} train / {len(va)} val images\n"
