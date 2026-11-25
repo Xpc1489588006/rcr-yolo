@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
+#SBATCH --gres=shard:16
 #SBATCH --mem=32G
 #SBATCH --time=24:00:00
 #SBATCH --array=0-4%5
@@ -27,11 +27,12 @@
 #               --out datasets/indoor_coco_fitted     # same seed=0, t=103, deterministic
 #   2) folds: python tools/make_cui_folds.py --root datasets/indoor_coco_fitted
 #
-# Submit (from ~/rcr/rcr_yolo_c0ffed2 on control03):
-#   sbatch --array=0-4%5 -p p3 -w control03 \
-#     --gres=gpu:NVIDIA_A40:1 --cpus-per-task=8 --mem=32G --time=24:00:00 \
-#     --export=ALL,DATA=$HOME/rcr/rcr_yolo_c0ffed2/datasets/indoor_coco_fitted \
+# Submit (gres defaults to shard:16 in this script; override on the command
+# line if needed, cluster shard convention as in train_pk.sh):
+#   sbatch --array=0-4%5 -p p3 \
+#     --export=ALL,DATA=$HOME/rcr/rcr_yolo_1122/datasets/indoor_coco_fitted \
 #     slurm/cui_yolov8s.sh
+#   A40 variant: --gres=shard:NVIDIA_A40:16
 #
 # After all 5 folds finish, aggregate and compare with Cui table 6:
 #   python train_cui_yolov8s.py --summarize --project runs/cui
@@ -44,7 +45,7 @@ DATA="${DATA:-datasets/indoor_coco_fitted}"
 FOLD="${SLURM_ARRAY_TASK_ID:-0}"
 
 echo "[cui_v8s] fold=$FOLD data=$DATA host=$(hostname) gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
-python -u train_cui_yolov8s.py --fold "$FOLD" --data "$DATA" --device 0 --workers 8 --project runs/cui
+python -u train_cui_yolov8s.py --fold "$FOLD" --data "$DATA" --device 0 --workers 4 --project runs/cui
 rc=$?
 echo "[cui_v8s] fold=$FOLD exit=$rc"
 exit $rc
