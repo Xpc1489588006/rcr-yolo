@@ -30,14 +30,20 @@ def _link_dir(link: Path, target: Path):
     which ultralytics does NOT catch -> job dies. Junction on Windows,
     symlink on Linux.
     """
+    if link.is_symlink() and not link.exists():
+        link.unlink()  # replace a broken (dangling) symlink from earlier runs
     if link.exists():
         return
+    # absolute target is CRITICAL: a relative symlink target resolves
+    # against the LINK's parent dir on Linux (folds/foldX_data/), not the
+    # CWD -> every image lookup fails with ENOENT
+    tgt = target.resolve()
     link.parent.mkdir(parents=True, exist_ok=True)
     if os.name == "nt":
-        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(tgt)],
                        check=True, capture_output=True)
     else:
-        link.symlink_to(target)
+        link.symlink_to(tgt)
 
 
 def main():
