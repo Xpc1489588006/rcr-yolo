@@ -35,48 +35,55 @@ COLS = {"P": "metrics/precision(B)", "R": "metrics/recall(B)",
         "mAP50-95": "metrics/mAP50-95(B)"}
 
 
-def train_fold(fold: int, data_root: Path, device: str, workers: int, project: str):
+def train_fold(fold: int, data_root: Path, device: str, workers: int, project: str,
+               preset: str, tag: str):
     from ultralytics import YOLO
 
     model = YOLO("yolov8s.yaml")  # from scratch (Cui sec 3.1 (ii))
-    model.train(
+    common = dict(
         data=str(data_root / "folds" / f"cui_fold{fold}.yaml"),
         epochs=100,          # Cui (iii)
-        batch=4,             # Cui (iii)
         imgsz=640,           # Cui (iii)
-        optimizer="AdamW",   # Cui (iii)
-        lr0=1e-4,            # Cui (iii)
-        weight_decay=5e-4,   # Cui (iii)
-        cos_lr=True,         # cosine schedule, lrf stays at ultralytics default
         patience=0,          # fixed 100 epochs, no early stop
         seed=fold,           # distinct init per fold (Cui (iv): no fixed seed)
         pretrained=False,    # Cui (ii): strictly from scratch
         device=device, workers=workers,
-        # absolute project: relative paths get re-rooted under runs/detect/ in
-        # ultralytics 8.4.x, breaking the summarize lookup
-        project=str(Path(project).resolve()), name=f"yolov8s_fold{fold}",
+        project=str(Path(project).resolve()), name=f"{tag}_fold{fold}",
         exist_ok=True, verbose=True,
     )
+    if preset == "cui":
+        # verbatim Cui (iii): "ultralytics RT-DETR defaults (AdamW, 1e-4 cosine,
+        # wd 5e-4, batch 4, 640, 100 epochs)" -- measured: 5-fold mAP50 49.1,
+        # 15 pts below table 6, so this reading is likely wrong for YOLOv8s
+        model.train(optimizer="AdamW", lr0=1e-4, weight_decay=5e-4, cos_lr=True,
+                    batch=4, **common)
+    elif preset == "yolo":
+        # alternative reading: YOLOv8s used its OWN ultralytics defaults
+        # (auto optimizer -> SGD lr0 0.01 at this dataset size, batch 16,
+        # linear lr decay) -- hypothesis under verification
+        model.train(**common)
+    else:
+        raise ValueError(preset)
 
 
-def fold_csv(fold: int, project: Path):
+def fold_csv(fold: int, project: Path, tag: str):
     """results.csv of a fold, tolerating ultralytics' run-dir re-rooting."""
     for base in (project, Path("runs/detect") / project):
-        p = base / f"yolov8s_fold{fold}" / "results.csv"
+        p = base / f"{tag}_fold{fold}" / "results.csv"
         if p.exists():
             return p
     return None
 
 
-def summarize(project: Path):
+def summarize(project: Path, tag: str):
     import csv
     import statistics as st
 
     rows = {}
     for fold in range(5):
-        p = fold_csv(fold, project)
+        p = fold_csv(fold, project, tag)
         if p is None:
-            print(f"[warn] results.csv for fold {fold} not found (checked {project} and runs/detect/{project})")
+            print(f"[warn] results.csv for {tag} fold {fold} not found (checked {project} and runs/detect/{project})")
             continue
         last = list(csv.DictReader(p.open()))[-1]  # final epoch = fixed protocol
         rows[fold] = {k: float(last[c]) * 100 for k, c in COLS.items()}
@@ -100,16 +107,22 @@ def main():
     ap.add_argument("--summarize", action="store_true", help="aggregate 5-fold results")
     ap.add_argument("--data", default="datasets/indoor_coco_fitted")
     ap.add_argument("--device", default="0")
-    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--project", default="runs/cui")
+    ap.add_argument("--preset", choices=["cui", "yolo"], default="cui",
+                    help="cui: verbatim RT-DETR-style hp (measured 15 pts low); "
+                         "yolo: ultralytics YOLOv8 own defaults (hypothesis)")
+    ap.add_argument("--tag", default=None, help="run-name prefix (default: yolov8s | yd_yolov8s)")
     args = ap.parse_args()
+    tag = args.tag or ("yolov8s" if args.preset == "cui" else "yd_yolov8s")
 
     if args.summarize:
-        summarize(Path(args.project))
+        summarize(Path(args.project), tag)
         return
     if args.fold not in range(5):
         ap.error("give --fold 0..4 or --summarize")
-    train_fold(args.fold, Path(args.data), args.device, args.workers, args.project)
+    train_fold(args.fold, Path(args.data), args.device, args.workers, args.project,
+               args.preset, tag)
 
 
 if __name__ == "__main__":
