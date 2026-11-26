@@ -43,12 +43,13 @@ mkdir -p logs runs/cui
 
 DATA="${DATA:-datasets/indoor_coco_fitted}"
 FOLD="${SLURM_ARRAY_TASK_ID:-0}"
+PRESET="${PRESET:-cui}"   # cui | yolo (see train_cui_yolov8s.py --preset)
 
 echo "[cui_v8s] fold=$FOLD data=$DATA host=$(hostname) gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 # stagger array starts: folds sharing a node would otherwise race on dataset
 # scanning / cache writes even with per-fold caches (belt and suspenders)
 sleep $((FOLD * 15))
-python -u train_cui_yolov8s.py --fold "$FOLD" --data "$DATA" --device 0 --workers 4 --project runs/cui
+python -u train_cui_yolov8s.py --fold "$FOLD" --data "$DATA" --device 0 --workers 4 --project runs/cui --preset "$PRESET"
 rc=$?
 echo "[cui_v8s] fold=$FOLD exit=$rc"
 exit $rc
